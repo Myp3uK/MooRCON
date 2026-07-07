@@ -1,0 +1,81 @@
+name: Build & Release
+
+# Сборка запускается при пуше тега вида v1.2.3, а также вручную из вкладки Actions.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Версия/тег для ручного релиза (например, v1.0.0)'
+        required: true
+
+permissions:
+  contents: write   # нужно для создания релиза и загрузки артефактов
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Определить версию из тега
+        id: ver
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"   # v1.2.3 -> 1.2.3
+
+      - name: Publish всех вариантов (win-x64 / win-x86, fdd + self-contained)
+        shell: bash
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          set -e
+          mkdir -p dist
+          for RID in win-x64 win-x86; do
+            # Framework-dependent (маленький, требует установленного .NET 10 Runtime)
+            dotnet publish MooRCON.csproj -c Release -r "$RID" \
+              --no-self-contained \
+              -p:PublishSingleFile=true \
+              -p:IncludeNativeLibrariesForSelfExtract=true \
+              -p:Version="$VERSION" \
+              -o "publish/$RID/framework-dependent"
+            cp "publish/$RID/framework-dependent/MooRCON.exe" \
+               "dist/MooRCON-$TAG-$RID.exe"
+
+            # Self-contained (автономный, сжатый — .NET ставить не нужно)
+            dotnet publish MooRCON.csproj -c Release -r "$RID" \
+              --self-contained \
+              -p:PublishSingleFile=true \
+              -p:IncludeNativeLibrariesForSelfExtract=true \
+              -p:EnableCompressionInSingleFile=true \
+              -p:Version="$VERSION" \
+              -o "publish/$RID/self-contained"
+            cp "publish/$RID/self-contained/MooRCON.exe" \
+               "dist/MooRCON-$TAG-$RID-self-contained.exe"
+          done
+          ls -la dist
+
+      - name: Создать релиз и загрузить сборки
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.ver.outputs.tag }}" \
+            dist/*.exe \
+            --title "MooRCON ${{ steps.ver.outputs.tag }}" \
+            --generate-notes

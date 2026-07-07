@@ -1,0 +1,17 @@
+# Auto-detect text files and normalize line endings to LF in the repo.
+* text=auto
+
+# Explicit rules for common file types
+*.cs        text diff=csharp
+*.csproj    text
+*.sln       text eol=crlf
+*.json      text
+*.md        text
+*.editorconfig text
+
+# Binary files — never normalize
+*.ico       binary
+*.png       binary
+*.jpg       binary
+*.dll       binary
+*.exe       binary

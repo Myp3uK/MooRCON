@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BlaBlaBla": {
+      "commandName": "Project",
+      "commandLineArgs": " -H 37.230.137.245 -P 25777 -p M0xo9mmsEZ03K3fj"
+    }
+  }
+}
