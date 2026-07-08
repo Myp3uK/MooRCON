@@ -66,9 +66,6 @@ dotnet publish -c Release -r win-x64 --self-contained
 | `%APPDATA%\MooRCON\servers.json` | список серверов (пароли зашифрованы) |
 | `%APPDATA%\MooRCON\history.json`  | история команд по серверам          |
 
-При первом запуске, если старые `servers.json` / `history.json` лежат рядом с exe,
-они автоматически переносятся в `%APPDATA%\MooRCON`.
-
 ## Стек
 
 - [RconSharp](https://www.nuget.org/packages/RconSharp) — реализация протокола RCON.
