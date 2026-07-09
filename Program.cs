@@ -830,7 +830,10 @@ namespace MooRCON
                         }
 
                         if (!string.IsNullOrWhiteSpace(response))
-                            lock (_consoleLock) Console.WriteLine(response.TrimEnd());
+                        {
+                            var text = NormalizeNewlines(response).TrimEnd();
+                            lock (_consoleLock) Console.WriteLine(text);
+                        }
 
                         idleTimer.Stop();
                         idleTimer.Start();
@@ -879,6 +882,16 @@ namespace MooRCON
             lock (_consoleLock)
                 AnsiConsole.MarkupLine($"{prefix}{Markup.Escape(str)}");
         }
+
+        /// <summary>
+        /// Ответ сервера может разделять строки одиночным \n (LF). Часть консольных хостов
+        /// трактует одиночный LF как «перевод строки без возврата каретки» — тогда вывод идёт
+        /// «лесенкой» (каждая строка начинается там, где закончилась предыдущая). Другие хосты
+        /// (например, Windows Terminal) выводят такой текст нормально. Приводим все переводы
+        /// строк к \r\n, чтобы вывод был корректным в любом терминале.
+        /// </summary>
+        private static string NormalizeNewlines(string s) =>
+            s.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", Environment.NewLine);
 
         private static List<string> ParseHelpOutput(string helpText)
         {
