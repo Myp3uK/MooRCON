@@ -12,6 +12,7 @@ namespace MooRCON.Wpf.Views;
 public partial class SessionView : UserControl
 {
     private INotifyCollectionChanged? _boundEntries;
+    private SessionViewModel? _boundVm;
 
     public SessionView() => InitializeComponent();
 
@@ -29,20 +30,27 @@ public partial class SessionView : UserControl
     {
         if (_boundEntries is not null)
             _boundEntries.CollectionChanged -= Entries_CollectionChanged;
+        if (_boundVm is not null)
+            _boundVm.FocusRequested -= OnFocusRequested;
 
         OutputBox.Document.Blocks.Clear();
         _boundEntries = null;
+        _boundVm = null;
 
         if (DataContext is SessionViewModel vm)
         {
             foreach (var entry in vm.OutputEntries) AppendParagraph(entry);
             _boundEntries = vm.OutputEntries;
             _boundEntries.CollectionChanged += Entries_CollectionChanged;
+            _boundVm = vm;
+            _boundVm.FocusRequested += OnFocusRequested;
             OutputBox.ScrollToEnd();
         }
 
         FocusInput();
     }
+
+    private void OnFocusRequested() => FocusInput();
 
     private void Entries_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {

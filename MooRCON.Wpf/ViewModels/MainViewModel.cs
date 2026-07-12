@@ -69,6 +69,7 @@ public sealed class MainViewModel : ObservableObject
         if (existing is not null)
         {
             SelectedSession = existing;
+            existing.RequestFocus(); // повторный выбор — вернуть фокус в поле ввода
             return;
         }
 

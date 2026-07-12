@@ -59,6 +59,10 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
 
     public event Action<SessionViewModel>? CloseRequested;
 
+    /// <summary>Просьба вью вернуть фокус в поле ввода (напр. при повторном выборе сервера).</summary>
+    public event Action? FocusRequested;
+    public void RequestFocus() => FocusRequested?.Invoke();
+
     public SessionViewModel(ServerConfig server)
     {
         Server = server;
