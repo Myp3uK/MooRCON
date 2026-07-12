@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationIcon>MyLogo.ico</ApplicationIcon>
+    <!-- Консольный проект лежит в корне репозитория, поэтому SDK по умолчанию
+         захватывал бы .cs из соседних проектов. Исключаем их папки. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);MooRCON.Core\**;MooRCON.Wpf\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
