@@ -3,6 +3,35 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Loaded="OnLoaded" IsVisibleChanged="OnIsVisibleChanged"
              PreviewKeyDown="OnPreviewKeyDown">
+
+    <UserControl.Resources>
+        <!-- Элемент выпадающего списка автодополнения/истории -->
+        <Style x:Key="SuggestItem" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="6" Padding="10,6">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Bg.StatInner}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Accent.Soft18}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
     <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -49,10 +78,10 @@
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <CheckBox Content="Держать соединение" VerticalAlignment="Center"
-                          Foreground="{DynamicResource Brush.Text.Muted}"
+                          Style="{StaticResource Check.Main}"
                           IsChecked="{Binding KeepAliveEnabled}"/>
                 <Button Content="Переподключить" Style="{StaticResource Btn.Secondary}"
-                        Margin="12,0,0,0" Height="30" Padding="12,0"
+                        Margin="14,0,0,0" Height="30" Padding="12,0"
                         Command="{Binding ReconnectCommand}"/>
             </StackPanel>
         </Grid>
@@ -65,13 +94,24 @@
             </Grid.ColumnDefinitions>
             <TextBox x:Name="InputBox" Grid.Column="0" Style="{StaticResource Field.Text}"
                      Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}"
-                     KeyDown="InputBox_KeyDown">
-                <TextBox.InputBindings>
-                    <KeyBinding Key="Enter" Command="{Binding SendCommand}"/>
-                </TextBox.InputBindings>
-            </TextBox>
+                     TextChanged="InputBox_TextChanged"/>
             <Button Grid.Column="1" Content="Отправить" Style="{StaticResource Btn.Accent}"
                     Height="40" Margin="10,0,0,0" Command="{Binding SendCommand}"/>
+
+            <!-- Выпадающий список: автодополнение команд / история ввода -->
+            <Popup IsOpen="{Binding SuggestionsOpen}" PlacementTarget="{Binding ElementName=InputBox}"
+                   Placement="Top" VerticalOffset="-4" StaysOpen="True" Focusable="False"
+                   AllowsTransparency="True" Width="{Binding ActualWidth, ElementName=InputBox}">
+                <Border Background="{DynamicResource Brush.Bg.Card}" CornerRadius="9"
+                        BorderBrush="{DynamicResource Brush.Border.Strong}" BorderThickness="1" Padding="4">
+                    <ListBox x:Name="SuggestList" ItemsSource="{Binding Suggestions}"
+                             SelectedIndex="{Binding SuggestionIndex, Mode=TwoWay}"
+                             Background="Transparent" BorderThickness="0" MaxHeight="220"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ItemContainerStyle="{StaticResource SuggestItem}"
+                             PreviewMouseLeftButtonUp="SuggestList_Click"/>
+                </Border>
+            </Popup>
         </Grid>
     </Grid>
 </UserControl>

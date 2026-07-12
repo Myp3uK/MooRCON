@@ -208,6 +208,43 @@
 
     <Style TargetType="TabItem" BasedOn="{StaticResource TabItem.Main}"/>
 
+    <!-- =========================================================
+         ЧЕКБОКС (стилизованный)
+         ========================================================= -->
+    <Style x:Key="Check.Main" TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                        <Border x:Name="box" Width="18" Height="18" CornerRadius="5"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource Brush.Bg.Input}"
+                                BorderBrush="{DynamicResource Brush.Border.Input}" BorderThickness="1">
+                            <TextBlock x:Name="check" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets"
+                                       FontSize="11" Foreground="White" Opacity="0"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="box" Property="Background" Value="{DynamicResource Brush.Accent}"/>
+                            <Setter TargetName="box" Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+                            <Setter TargetName="check" Property="Opacity" Value="1"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource Brush.Bg.Card}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}"/>

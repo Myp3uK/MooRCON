@@ -1,8 +1,11 @@
+using System.Collections.ObjectModel;
 using System.Windows.Threading;
 using MooRCON.Core;
 using MooRCON.Wpf.Mvvm;
 
 namespace MooRCON.Wpf.ViewModels;
+
+public enum SuggestionKind { Completion, History }
 
 /// <summary>
 /// Одна вкладка = одно независимое RCON-подключение: свой сокет, свой вывод,
@@ -14,11 +17,8 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
     private readonly HistoryStore _historyStore = new();
     private readonly DispatcherTimer _keepAlive;
     private readonly List<string> _history;
-    private int _historyIndex = -1;
-
     private List<string> _availableCommands = new();
-    private readonly List<string> _tabMatches = new();
-    private int _tabIndex = -1;
+    private bool _suppressCompletion;
 
     public ServerConfig Server { get; }
     public string Header => Server.Name;
@@ -34,11 +34,7 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
 
     private bool _isConnected;
-    public bool IsConnected
-    {
-        get => _isConnected;
-        private set => SetProperty(ref _isConnected, value);
-    }
+    public bool IsConnected { get => _isConnected; private set => SetProperty(ref _isConnected, value); }
 
     private bool _keepAliveEnabled = true;
     public bool KeepAliveEnabled
@@ -46,6 +42,17 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         get => _keepAliveEnabled;
         set { if (SetProperty(ref _keepAliveEnabled, value)) UpdateKeepAlive(); }
     }
+
+    // --- Выпадающий список: автодополнение команд и история ввода ---
+    public ObservableCollection<string> Suggestions { get; } = new();
+
+    private bool _suggestionsOpen;
+    public bool SuggestionsOpen { get => _suggestionsOpen; private set => SetProperty(ref _suggestionsOpen, value); }
+
+    private int _suggestionIndex = -1;
+    public int SuggestionIndex { get => _suggestionIndex; set => SetProperty(ref _suggestionIndex, value); }
+
+    public SuggestionKind SuggestionKind { get; private set; }
 
     public RelayCommand SendCommand { get; }
     public RelayCommand ReconnectCommand { get; }
@@ -93,9 +100,9 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         var cmd = Input.Trim();
         if (cmd.Length == 0 || !IsConnected) return;
 
+        CloseSuggestions();
         Input = "";
         if (_history.Count == 0 || _history[^1] != cmd) _history.Add(cmd);
-        _historyIndex = -1;
         AppendLine($"> {cmd}");
 
         try
@@ -116,6 +123,21 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         _historyStore.Save(Server.Name, _history);
     }
 
+    private async Task LoadCommandsAsync()
+    {
+        try
+        {
+            var help = await _session.ExecuteAsync("help", 5000);
+            var cmds = HelpCommandParser.Parse(help);
+            if (cmds.Count > 0)
+            {
+                _availableCommands = cmds;
+                AppendLine($"Загружено команд для автодополнения: {cmds.Count}");
+            }
+        }
+        catch { /* автодополнение не критично */ }
+    }
+
     private async Task KeepAliveTickAsync()
     {
         if (!IsConnected || !KeepAliveEnabled) return;
@@ -132,79 +154,79 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-    private async Task LoadCommandsAsync()
-    {
-        try
-        {
-            var help = await _session.ExecuteAsync("help", 5000);
-            var cmds = HelpCommandParser.Parse(help);
-            if (cmds.Count > 0)
-            {
-                _availableCommands = cmds;
-                AppendLine($"Загружено команд для автодополнения: {cmds.Count}");
-            }
-        }
-        catch { /* автодополнение не критично */ }
-    }
+    // ==================== Выпадающий список ====================
 
-    // --- Автодополнение по Tab (вызывается из code-behind) ---
-    public void Autocomplete()
+    /// <summary>Обновляет список автодополнения по текущему вводу (вызывается при печати).</summary>
+    public void UpdateCompletions()
     {
-        var current = Input;
-        if (current.Contains(' ')) return;
+        if (_suppressCompletion) { _suppressCompletion = false; return; }
 
-        // Повторный Tab — циклируем по найденным вариантам.
-        if (_tabMatches.Count > 1 && _tabIndex >= 0 &&
-            string.Equals(current, _tabMatches[_tabIndex], StringComparison.OrdinalIgnoreCase))
+        var token = Input;
+        if (string.IsNullOrEmpty(token) || token.Contains(' ') || _availableCommands.Count == 0)
         {
-            _tabIndex = (_tabIndex + 1) % _tabMatches.Count;
-            Input = _tabMatches[_tabIndex];
+            CloseSuggestions();
             return;
         }
 
         var matches = _availableCommands
-            .Where(c => c.StartsWith(current, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(c => c)
+            .Where(c => c.StartsWith(token, StringComparison.OrdinalIgnoreCase)
+                     && !string.Equals(c, token, StringComparison.OrdinalIgnoreCase))
+            .Take(8)
             .ToList();
 
-        if (matches.Count == 0) { ResetCompletion(); return; }
-
-        _tabMatches.Clear();
-        _tabMatches.AddRange(matches);
-        _tabIndex = 0;
-        Input = matches[0];
-        if (matches.Count == 1) ResetCompletion();
+        if (matches.Count == 0) { CloseSuggestions(); return; }
+        Show(matches, SuggestionKind.Completion);
     }
 
-    public void ResetCompletion()
-    {
-        _tabMatches.Clear();
-        _tabIndex = -1;
-    }
-
-    // --- История ввода (вызывается из code-behind по стрелкам ↑/↓) ---
-    public void HistoryPrev()
+    /// <summary>Показывает историю недавних команд (вызывается по стрелке вверх).</summary>
+    public void ShowHistory()
     {
         if (_history.Count == 0) return;
-        if (_historyIndex == -1) _historyIndex = _history.Count - 1;
-        else if (_historyIndex > 0) _historyIndex--;
-        Input = _history[_historyIndex];
+
+        var items = new List<string>();
+        for (int i = _history.Count - 1; i >= 0 && items.Count < 15; i--)
+            if (!items.Contains(_history[i])) items.Add(_history[i]);
+
+        Show(items, SuggestionKind.History);
     }
 
-    public void HistoryNext()
+    private void Show(IReadOnlyList<string> items, SuggestionKind kind)
     {
-        if (_history.Count == 0 || _historyIndex == -1) return;
-        if (_historyIndex < _history.Count - 1)
-        {
-            _historyIndex++;
-            Input = _history[_historyIndex];
-        }
-        else
-        {
-            _historyIndex = -1;
-            Input = "";
-        }
+        SuggestionKind = kind;
+        Suggestions.Clear();
+        foreach (var it in items) Suggestions.Add(it);
+        SuggestionIndex = Suggestions.Count > 0 ? 0 : -1;
+        SuggestionsOpen = Suggestions.Count > 0;
     }
+
+    public void MoveSelection(int delta)
+    {
+        if (!SuggestionsOpen || Suggestions.Count == 0) return;
+        int idx = SuggestionIndex + delta;
+        if (idx < 0) idx = Suggestions.Count - 1;
+        else if (idx >= Suggestions.Count) idx = 0;
+        SuggestionIndex = idx;
+    }
+
+    /// <summary>Подставляет выбранный вариант в поле ввода.</summary>
+    public bool AcceptSuggestion()
+    {
+        if (!SuggestionsOpen || SuggestionIndex < 0 || SuggestionIndex >= Suggestions.Count)
+            return false;
+
+        _suppressCompletion = true; // не переоткрывать список от программной смены Input
+        Input = Suggestions[SuggestionIndex];
+        CloseSuggestions();
+        return true;
+    }
+
+    public void CloseSuggestions()
+    {
+        SuggestionsOpen = false;
+        SuggestionIndex = -1;
+    }
+
+    // ==========================================================
 
     private void SyncConnectionState()
     {
