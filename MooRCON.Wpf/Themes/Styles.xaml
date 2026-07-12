@@ -127,6 +127,37 @@
         </Setter>
     </Style>
 
+    <!-- Поле пароля (аналог Field.Text) -->
+    <Style x:Key="Field.Password" TargetType="PasswordBox">
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="Padding" Value="13,0"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Strong}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource Brush.Text.Strong}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.Bg.Input}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="PasswordBox">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="9">
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+                                      VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- =========================================================
          ГЛАВНОЕ ОКНО
          ========================================================= -->

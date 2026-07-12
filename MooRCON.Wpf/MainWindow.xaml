@@ -190,8 +190,12 @@
                         </ItemsControl>
                     </ScrollViewer>
 
-                    <Button Grid.Row="2" Content="Обновить список" Style="{StaticResource Btn.Secondary}"
-                            Margin="12" Command="{Binding RefreshServersCommand}"/>
+                    <StackPanel Grid.Row="2" Margin="12">
+                        <Button Content="+ Добавить сервер" Style="{StaticResource Btn.Accent}"
+                                Click="OnAddServer"/>
+                        <Button Content="Обновить список" Style="{StaticResource Btn.Secondary}"
+                                Margin="0,8,0,0" Command="{Binding RefreshServersCommand}"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 

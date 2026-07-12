@@ -1,6 +1,9 @@
+using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using MooRCON.Wpf.ViewModels;
 
@@ -8,6 +11,8 @@ namespace MooRCON.Wpf.Views;
 
 public partial class SessionView : UserControl
 {
+    private INotifyCollectionChanged? _boundEntries;
+
     public SessionView() => InitializeComponent();
 
     private void OnLoaded(object sender, RoutedEventArgs e) => FocusInput();
@@ -18,15 +23,57 @@ public partial class SessionView : UserControl
         else (DataContext as SessionViewModel)?.CloseSuggestions();
     }
 
+    // TabControl переиспользует один SessionView, меняя DataContext при переключении/открытии
+    // вкладок. Здесь пересобираем вывод под новую сессию и возвращаем фокус в поле ввода.
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (_boundEntries is not null)
+            _boundEntries.CollectionChanged -= Entries_CollectionChanged;
+
+        OutputBox.Document.Blocks.Clear();
+        _boundEntries = null;
+
+        if (DataContext is SessionViewModel vm)
+        {
+            foreach (var entry in vm.OutputEntries) AppendParagraph(entry);
+            _boundEntries = vm.OutputEntries;
+            _boundEntries.CollectionChanged += Entries_CollectionChanged;
+            OutputBox.ScrollToEnd();
+        }
+
+        FocusInput();
+    }
+
+    private void Entries_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems is not null)
+            foreach (OutputEntry entry in e.NewItems) AppendParagraph(entry);
+        else if (e.Action == NotifyCollectionChangedAction.Reset)
+            OutputBox.Document.Blocks.Clear();
+
+        OutputBox.ScrollToEnd();
+    }
+
+    private void AppendParagraph(OutputEntry entry)
+    {
+        var run = new Run(entry.Text) { Foreground = BrushFor(entry.Kind) };
+        OutputBox.Document.Blocks.Add(new Paragraph(run) { Margin = new Thickness(0) });
+    }
+
+    private Brush BrushFor(OutputKind kind) => kind switch
+    {
+        OutputKind.Command => (Brush)FindResource("Brush.Accent"),
+        OutputKind.System => (Brush)FindResource("Brush.Text.Muted"),
+        _ => (Brush)FindResource("Brush.Text.Log"),
+    };
+
     private void FocusInput()
         => Dispatcher.BeginInvoke(new Action(() =>
         {
             InputBox.Focus();
+            Keyboard.Focus(InputBox);
             InputBox.CaretIndex = InputBox.Text.Length;
         }), DispatcherPriority.Input);
-
-    private void OutputBox_TextChanged(object sender, TextChangedEventArgs e)
-        => OutputBox.ScrollToEnd();
 
     private void InputBox_TextChanged(object sender, TextChangedEventArgs e)
         => (DataContext as SessionViewModel)?.UpdateCompletions();

@@ -39,6 +39,14 @@ public sealed class MainViewModel : ObservableObject
             Servers.Add(s);
     }
 
+    public IEnumerable<string> ServerNames => Servers.Select(s => s.Name);
+
+    public void AddServer(ServerConfig cfg)
+    {
+        Servers.Add(cfg);
+        _serverStore.Save(Servers);
+    }
+
     private async Task OpenSessionAsync(ServerConfig? server)
     {
         if (server is null) return;

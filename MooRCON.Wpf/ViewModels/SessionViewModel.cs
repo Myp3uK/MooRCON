@@ -24,8 +24,7 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
     public string Header => Server.Name;
     public string Endpoint => $"{Server.IpHost}:{Server.RconPort}";
 
-    private string _output = "";
-    public string Output { get => _output; private set => SetProperty(ref _output, value); }
+    public ObservableCollection<OutputEntry> OutputEntries { get; } = new();
 
     private string _input = "";
     public string Input { get => _input; set => SetProperty(ref _input, value); }
@@ -42,9 +41,6 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         get => _keepAliveEnabled;
         set { if (SetProperty(ref _keepAliveEnabled, value)) UpdateKeepAlive(); }
     }
-
-    private bool _wrapOutput;
-    public bool WrapOutput { get => _wrapOutput; set => SetProperty(ref _wrapOutput, value); }
 
     // --- Выпадающий список: автодополнение команд и история ввода ---
     public ObservableCollection<string> Suggestions { get; } = new();
@@ -106,13 +102,13 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         CloseSuggestions();
         Input = "";
         if (_history.Count == 0 || _history[^1] != cmd) _history.Add(cmd);
-        AppendLine($"> {cmd}");
+        AppendLine($"> {cmd}", OutputKind.Command);
 
         try
         {
             var resp = await _session.ExecuteAsync(cmd);
             if (!string.IsNullOrWhiteSpace(resp))
-                AppendLine(TextFormatting.NormalizeNewlines(resp).TrimEnd());
+                AppendLine(TextFormatting.NormalizeNewlines(resp).TrimEnd(), OutputKind.Response);
         }
         catch (OperationCanceledException)
         {
@@ -250,8 +246,11 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         else _keepAlive.Stop();
     }
 
-    private void AppendLine(string text)
-        => Output += (Output.Length == 0 ? "" : Environment.NewLine) + text;
+    private void AppendLine(string text, OutputKind kind = OutputKind.System)
+    {
+        foreach (var line in text.Replace("\r\n", "\n").Split('\n'))
+            OutputEntries.Add(new OutputEntry(line, kind));
+    }
 
     public async ValueTask DisposeAsync()
     {

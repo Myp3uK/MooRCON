@@ -21,6 +21,15 @@ public partial class MainWindow : Window
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
 
+    private void OnAddServer(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ViewModels.MainViewModel vm) return;
+
+        var dialog = new AddServerWindow(vm.ServerNames) { Owner = this };
+        if (dialog.ShowDialog() == true && dialog.Result is not null)
+            vm.AddServer(dialog.Result);
+    }
+
     private void UpdateMaximizeGlyph()
         => MaximizeButton.Content = WindowState == WindowState.Maximized ? RestoreGlyph : MaximizeGlyph;
 }
