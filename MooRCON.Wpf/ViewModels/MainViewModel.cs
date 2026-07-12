@@ -59,6 +59,16 @@ public sealed class MainViewModel : ObservableObject
         _serverStore.Save(Servers);
     }
 
+    public void UpdateServer(ServerConfig original, ServerConfig updated)
+    {
+        original.Name = updated.Name;
+        original.IpHost = updated.IpHost;
+        original.RconPort = updated.RconPort;
+        original.RconPass = updated.RconPass;
+        _serverStore.Save(Servers);
+        LoadServers(); // пересобираем список, чтобы сайдбар показал новые значения
+    }
+
     private async Task OpenSessionAsync(ServerConfig? server)
     {
         if (server is null) return;

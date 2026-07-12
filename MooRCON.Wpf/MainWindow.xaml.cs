@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Interop;
+using MooRCON.Core;
 
 namespace MooRCON.Wpf;
 
@@ -52,6 +53,24 @@ public partial class MainWindow : Window
         {
             if (dialog.ShowDialog() == true && dialog.Result is not null)
                 vm.AddServer(dialog.Result);
+        }
+        finally
+        {
+            _modalDepth--;
+        }
+    }
+
+    private void OnEditServer(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ViewModels.MainViewModel vm) return;
+        if ((sender as FrameworkElement)?.DataContext is not ServerConfig server) return;
+
+        var dialog = new AddServerWindow(vm.ServerNames, server) { Owner = this };
+        _modalDepth++;
+        try
+        {
+            if (dialog.ShowDialog() == true && dialog.Result is not null)
+                vm.UpdateServer(server, dialog.Result);
         }
         finally
         {

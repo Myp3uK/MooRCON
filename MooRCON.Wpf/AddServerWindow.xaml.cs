@@ -9,11 +9,28 @@ public partial class AddServerWindow : Window
 
     public ServerConfig? Result { get; private set; }
 
-    public AddServerWindow(IEnumerable<string> existingNames)
+    /// <param name="edit">Если задан — окно работает в режиме редактирования этого сервера.</param>
+    public AddServerWindow(IEnumerable<string> existingNames, ServerConfig? edit = null)
     {
         InitializeComponent();
+
         _existingNames = new HashSet<string>(existingNames, StringComparer.OrdinalIgnoreCase);
-        Loaded += (_, _) => NameBox.Focus();
+        if (edit is not null)
+        {
+            // Собственное имя редактируемого сервера не считаем конфликтом.
+            _existingNames.Remove(edit.Name);
+
+            Title = "Редактировать сервер";
+            TitleText.Text = "Редактировать сервер";
+            NameBox.Text = edit.Name;
+            HostBox.Text = edit.IpHost;
+            PortBox.Text = edit.RconPort.ToString();
+            Loaded += (_, _) => { PassBox.Password = edit.RconPass; NameBox.Focus(); };
+        }
+        else
+        {
+            Loaded += (_, _) => NameBox.Focus();
+        }
     }
 
     private void OnCancel(object sender, RoutedEventArgs e) => Close();

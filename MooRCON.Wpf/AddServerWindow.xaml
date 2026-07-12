@@ -15,7 +15,7 @@
 
         <!-- Заголовок -->
         <Grid Grid.Row="0" Background="{DynamicResource Brush.Bg.TitleBar}">
-            <TextBlock Text="Добавить сервер" Margin="14,0,0,0" VerticalAlignment="Center"
+            <TextBlock x:Name="TitleText" Text="Добавить сервер" Margin="14,0,0,0" VerticalAlignment="Center"
                        FontSize="12.5" FontWeight="SemiBold"
                        Foreground="{DynamicResource Brush.Text.Strong}"/>
             <Button Content="&#xE8BB;" Style="{StaticResource Btn.Caption}" HorizontalAlignment="Right"
