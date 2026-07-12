@@ -22,39 +22,43 @@
                     Click="OnCancel"/>
         </Grid>
 
-        <!-- Форма -->
-        <StackPanel Grid.Row="1" Margin="20,18,20,18">
-            <TextBlock Text="Имя сервера" Foreground="{DynamicResource Brush.Text.Label}" FontSize="12" Margin="2,0,0,6"/>
-            <TextBox x:Name="NameBox" Style="{StaticResource Field.Text}"/>
+        <!-- Форма (фон как у основной программы) -->
+        <Grid Grid.Row="1" Background="{DynamicResource Brush.Bg.Surface}">
+            <StackPanel VerticalAlignment="Top" Margin="20,18,20,0">
+                <TextBlock Text="Имя сервера" Foreground="{DynamicResource Brush.Text.Label}" FontSize="12" Margin="2,0,0,6"/>
+                <TextBox x:Name="NameBox" Style="{StaticResource Field.Text}"/>
 
-            <TextBlock Text="Адрес (IP или hostname)" Foreground="{DynamicResource Brush.Text.Label}"
-                       FontSize="12" Margin="2,14,0,6"/>
-            <TextBox x:Name="HostBox" Style="{StaticResource Field.Text}"/>
+                <TextBlock Text="Адрес (IP или hostname)" Foreground="{DynamicResource Brush.Text.Label}"
+                           FontSize="12" Margin="2,14,0,6"/>
+                <TextBox x:Name="HostBox" Style="{StaticResource Field.Text}"/>
 
-            <Grid Margin="0,14,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="120"/>
-                    <ColumnDefinition Width="16"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="Порт RCON" Foreground="{DynamicResource Brush.Text.Label}" FontSize="12" Margin="2,0,0,6"/>
-                    <TextBox x:Name="PortBox" Style="{StaticResource Field.Text}" Text="25575"/>
-                </StackPanel>
-                <StackPanel Grid.Column="2">
-                    <TextBlock Text="Пароль RCON" Foreground="{DynamicResource Brush.Text.Label}" FontSize="12" Margin="2,0,0,6"/>
-                    <PasswordBox x:Name="PassBox" Style="{StaticResource Field.Password}"/>
-                </StackPanel>
-            </Grid>
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Порт RCON" Foreground="{DynamicResource Brush.Text.Label}" FontSize="12" Margin="2,0,0,6"/>
+                        <TextBox x:Name="PortBox" Style="{StaticResource Field.Text}" Text="25575"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Пароль RCON" Foreground="{DynamicResource Brush.Text.Label}" FontSize="12" Margin="2,0,0,6"/>
+                        <PasswordBox x:Name="PassBox" Style="{StaticResource Field.Password}"/>
+                    </StackPanel>
+                </Grid>
 
-            <TextBlock x:Name="ErrorText" Foreground="{DynamicResource Brush.Danger}" FontSize="12"
-                       Margin="2,14,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                <TextBlock x:Name="ErrorText" Foreground="{DynamicResource Brush.Danger}" FontSize="12"
+                           Margin="2,14,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+            </StackPanel>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <!-- Кнопки прижаты к низу окна -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                        Margin="20">
                 <Button Content="Отмена" Style="{StaticResource Btn.Secondary}" Width="110" Click="OnCancel"/>
                 <Button Content="Сохранить" Style="{StaticResource Btn.Accent}" Width="130" Margin="10,0,0,0"
                         Click="OnSave"/>
             </StackPanel>
-        </StackPanel>
+        </Grid>
     </Grid>
 </Window>

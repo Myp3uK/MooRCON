@@ -9,7 +9,7 @@
         <!-- Элемент выпадающего списка автодополнения/истории -->
         <Style x:Key="SuggestItem" TargetType="ListBoxItem">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}"/>
-            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontFamily" Value="{StaticResource Font.Mono}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
@@ -46,7 +46,7 @@
             <RichTextBox x:Name="OutputBox" IsReadOnly="True"
                          Background="Transparent" BorderThickness="0"
                          Foreground="{DynamicResource Brush.Text.Log}"
-                         FontFamily="Consolas" FontSize="13" Padding="10"
+                         FontFamily="{StaticResource Font.Mono}" FontSize="13" Padding="10"
                          VerticalScrollBarVisibility="Auto"
                          HorizontalScrollBarVisibility="Disabled">
                 <FlowDocument PagePadding="0"/>
@@ -92,6 +92,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBox x:Name="InputBox" Grid.Column="0" Style="{StaticResource Field.Text}"
+                     FontFamily="{StaticResource Font.Mono}"
                      Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}"
                      TextChanged="InputBox_TextChanged"/>
             <Button Grid.Column="1" Content="Отправить" Style="{StaticResource Btn.Accent}"

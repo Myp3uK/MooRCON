@@ -11,6 +11,9 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <!-- Моноширинный шрифт как в Windows Terminal (с фолбэком) -->
+    <FontFamily x:Key="Font.Mono">Cascadia Mono, Consolas, Courier New</FontFamily>
+
     <!-- общие числа -->
     <CornerRadius x:Key="Radius.Control">9</CornerRadius>
     <CornerRadius x:Key="Radius.Card">12</CornerRadius>

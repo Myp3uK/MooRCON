@@ -142,6 +142,11 @@
                            Foreground="{DynamicResource Brush.Text.Faint}"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="Закрыть все" Height="26" Padding="11,0" FontSize="11.5" Margin="0,0,12,0"
+                        VerticalAlignment="Center" Style="{StaticResource Btn.Secondary}"
+                        WindowChrome.IsHitTestVisibleInChrome="True"
+                        Command="{Binding CloseAllCommand}"
+                        Visibility="{Binding HasSessions, Converter={StaticResource BoolToVis}}"/>
                 <Button x:Name="MinimizeButton" Content="&#xE921;" Style="{StaticResource Btn.Caption}"
                         Click="OnMinimize"/>
                 <Button x:Name="MaximizeButton" Content="&#xE922;" Style="{StaticResource Btn.Caption}"

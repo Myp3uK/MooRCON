@@ -22,6 +22,7 @@ public sealed class MainViewModel : ObservableObject
 
     public RelayCommand ConnectCommand { get; }
     public RelayCommand RefreshServersCommand { get; }
+    public RelayCommand CloseAllCommand { get; }
 
     public MainViewModel()
     {
@@ -30,6 +31,17 @@ public sealed class MainViewModel : ObservableObject
 
         ConnectCommand = new RelayCommand(async p => await OpenSessionAsync(p as ServerConfig));
         RefreshServersCommand = new RelayCommand(_ => LoadServers());
+        CloseAllCommand = new RelayCommand(async _ => await CloseAllAsync(), _ => HasSessions);
+    }
+
+    private async Task CloseAllAsync()
+    {
+        foreach (var vm in Sessions.ToList())
+        {
+            Sessions.Remove(vm);
+            await vm.DisposeAsync();
+        }
+        SelectedSession = null;
     }
 
     private void LoadServers()
