@@ -5,7 +5,8 @@
         xmlns:views="clr-namespace:MooRCON.Wpf.Views"
         xmlns:conv="clr-namespace:MooRCON.Wpf.Converters"
         Style="{StaticResource Window.Main}"
-        Title="MooRCON" Height="720" Width="1180"
+        Title="MooRCON" Icon="Assets/app.ico"
+        Height="720" Width="1180"
         WindowStartupLocation="CenterScreen">
 
     <Window.DataContext>
@@ -125,19 +126,28 @@
 
         <!-- ==================== ЗАГОЛОВОК ОКНА ==================== -->
         <Grid Grid.Row="0" Background="{DynamicResource Brush.Bg.TitleBar}">
-            <StackPanel Orientation="Horizontal" Margin="14,0" VerticalAlignment="Center">
-                <TextBlock Text="MooR" Foreground="{DynamicResource Brush.Accent}"
-                           FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
-                <TextBlock Text="RCON" Foreground="{DynamicResource Brush.Text.Primary}"
-                           FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
-                <TextBlock Text="RCON-клиент" Foreground="{DynamicResource Brush.Text.Faint}"
-                           FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="12,0,0,0"
+                        VerticalAlignment="Center">
+                <Image Source="Assets/app.ico" Width="20" Height="20"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                <TextBlock Text="MooRCON" Margin="10,0,0,0"
+                           VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Brush.Text.Strong}"/>
+                <TextBlock Text="RCON-клиент" Margin="8,0,0,0"
+                           VerticalAlignment="Center" FontSize="12.5"
+                           Foreground="{DynamicResource Brush.Text.Faint}"/>
             </StackPanel>
-
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Style="{StaticResource Btn.Caption}" Content="&#xE949;" Click="Minimize_Click"/>
-                <Button Style="{StaticResource Btn.Caption}" Content="&#xE739;" Click="Maximize_Click"/>
-                <Button Style="{StaticResource Btn.Caption}" Content="&#xE711;" Click="Close_Click"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="MinimizeButton" Content="&#xE921;" Style="{StaticResource Btn.Caption}"
+                        Click="OnMinimize"/>
+                <Button x:Name="MaximizeButton" Content="&#xE922;" Style="{StaticResource Btn.Caption}"
+                        Click="OnMaximizeRestore"/>
+                <Button x:Name="CloseButton" Content="&#xE8BB;" Style="{StaticResource Btn.Caption}"
+                        Click="OnClose"/>
             </StackPanel>
         </Grid>
 

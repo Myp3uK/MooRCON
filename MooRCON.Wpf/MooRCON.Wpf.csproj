@@ -8,8 +8,12 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>MooRCON</AssemblyName>
     <RootNamespace>MooRCON.Wpf</RootNamespace>
-    <ApplicationIcon>..\MyLogo.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MooRCON.Core\MooRCON.Core.csproj" />
