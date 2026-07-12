@@ -16,6 +16,10 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
     private readonly List<string> _history;
     private int _historyIndex = -1;
 
+    private List<string> _availableCommands = new();
+    private readonly List<string> _tabMatches = new();
+    private int _tabIndex = -1;
+
     public ServerConfig Server { get; }
     public string Header => Server.Name;
     public string Endpoint => $"{Server.IpHost}:{Server.RconPort}";
@@ -74,6 +78,7 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
             Status = "Подключено";
             AppendLine("Авторизация успешна.");
             UpdateKeepAlive();
+            await LoadCommandsAsync();
         }
         catch (Exception ex)
         {
@@ -125,6 +130,56 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
             if (!IsConnected)
                 AppendLine("[keep-alive] соединение потеряно.");
         }
+    }
+
+    private async Task LoadCommandsAsync()
+    {
+        try
+        {
+            var help = await _session.ExecuteAsync("help", 5000);
+            var cmds = HelpCommandParser.Parse(help);
+            if (cmds.Count > 0)
+            {
+                _availableCommands = cmds;
+                AppendLine($"Загружено команд для автодополнения: {cmds.Count}");
+            }
+        }
+        catch { /* автодополнение не критично */ }
+    }
+
+    // --- Автодополнение по Tab (вызывается из code-behind) ---
+    public void Autocomplete()
+    {
+        var current = Input;
+        if (current.Contains(' ')) return;
+
+        // Повторный Tab — циклируем по найденным вариантам.
+        if (_tabMatches.Count > 1 && _tabIndex >= 0 &&
+            string.Equals(current, _tabMatches[_tabIndex], StringComparison.OrdinalIgnoreCase))
+        {
+            _tabIndex = (_tabIndex + 1) % _tabMatches.Count;
+            Input = _tabMatches[_tabIndex];
+            return;
+        }
+
+        var matches = _availableCommands
+            .Where(c => c.StartsWith(current, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c)
+            .ToList();
+
+        if (matches.Count == 0) { ResetCompletion(); return; }
+
+        _tabMatches.Clear();
+        _tabMatches.AddRange(matches);
+        _tabIndex = 0;
+        Input = matches[0];
+        if (matches.Count == 1) ResetCompletion();
+    }
+
+    public void ResetCompletion()
+    {
+        _tabMatches.Clear();
+        _tabIndex = -1;
     }
 
     // --- История ввода (вызывается из code-behind по стрелкам ↑/↓) ---

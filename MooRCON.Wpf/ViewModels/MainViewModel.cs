@@ -43,6 +43,15 @@ public sealed class MainViewModel : ObservableObject
     {
         if (server is null) return;
 
+        // Вкладка на этот сервер уже открыта — переиспользуем её, не плодим дубли.
+        var existing = Sessions.FirstOrDefault(
+            s => string.Equals(s.Server.Name, server.Name, StringComparison.Ordinal));
+        if (existing is not null)
+        {
+            SelectedSession = existing;
+            return;
+        }
+
         var vm = new SessionViewModel(server);
         vm.CloseRequested += async s => await CloseSessionAsync(s);
         Sessions.Add(vm);

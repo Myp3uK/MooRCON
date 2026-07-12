@@ -36,6 +36,59 @@
             </Setter>
         </Style>
 
+        <!-- Вкладка сессии: фиксированный размер, фон активной, ховер-анимация -->
+        <Style x:Key="SessionTabItem" TargetType="TabItem">
+            <Setter Property="Width" Value="200"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Grid>
+                            <Border x:Name="hover" Background="{DynamicResource Brush.Bg.Card}"
+                                    CornerRadius="8,8,0,0" Opacity="0"/>
+                            <Border x:Name="sel" Background="{DynamicResource Brush.Bg.Surface}"
+                                    CornerRadius="8,8,0,0" Opacity="0"
+                                    BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="0,0,0,2"/>
+                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center"
+                                              HorizontalAlignment="Stretch" Margin="12,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="hover"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="0:0:0.12"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="hover"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.12"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="sel" Property="Opacity" Value="1"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Кнопка закрытия вкладки -->
         <Style x:Key="TabCloseButton" TargetType="Button">
             <Setter Property="Width" Value="18"/>
@@ -73,9 +126,9 @@
         <!-- ==================== ЗАГОЛОВОК ОКНА ==================== -->
         <Grid Grid.Row="0" Background="{DynamicResource Brush.Bg.TitleBar}">
             <StackPanel Orientation="Horizontal" Margin="14,0" VerticalAlignment="Center">
-                <TextBlock Text="Moo" Foreground="{DynamicResource Brush.Text.Primary}"
+                <TextBlock Text="MooR" Foreground="{DynamicResource Brush.Accent}"
                            FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
-                <TextBlock Text="RCON" Foreground="{DynamicResource Brush.Accent}"
+                <TextBlock Text="RCON" Foreground="{DynamicResource Brush.Text.Primary}"
                            FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
                 <TextBlock Text="RCON-клиент" Foreground="{DynamicResource Brush.Text.Faint}"
                            FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center"/>
@@ -148,11 +201,17 @@
                                 Margin="8,6,8,8"
                                 ItemsSource="{Binding Sessions}"
                                 SelectedItem="{Binding SelectedSession, Mode=TwoWay}"
+                                ItemContainerStyle="{StaticResource SessionTabItem}"
                                 Visibility="{Binding HasSessions, Converter={StaticResource BoolToVis}}">
                         <TabControl.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse Grid.Column="0" Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
                                         <Ellipse.Style>
                                             <Style TargetType="Ellipse">
                                                 <Setter Property="Fill" Value="{DynamicResource Brush.Offline}"/>
@@ -164,9 +223,11 @@
                                             </Style>
                                         </Ellipse.Style>
                                     </Ellipse>
-                                    <TextBlock Text="{Binding Header}" VerticalAlignment="Center"/>
-                                    <Button Style="{StaticResource TabCloseButton}" Command="{Binding CloseCommand}"/>
-                                </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{Binding Header}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <Button Grid.Column="2" Style="{StaticResource TabCloseButton}"
+                                            Command="{Binding CloseCommand}"/>
+                                </Grid>
                             </DataTemplate>
                         </TabControl.ItemTemplate>
                         <TabControl.ContentTemplate>
