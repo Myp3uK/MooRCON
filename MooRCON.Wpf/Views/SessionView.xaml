@@ -49,9 +49,20 @@
                      Background="Transparent" BorderThickness="0"
                      Foreground="{DynamicResource Brush.Text.Log}"
                      FontFamily="Consolas" FontSize="13"
-                     Padding="10" TextWrapping="NoWrap"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Auto"/>
+                     Padding="10" VerticalScrollBarVisibility="Auto">
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="TextWrapping" Value="NoWrap"/>
+                        <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding WrapOutput}" Value="True">
+                                <Setter Property="TextWrapping" Value="Wrap"/>
+                                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
         </Border>
 
         <!-- Статус-бар -->
@@ -77,7 +88,10 @@
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <CheckBox Content="Держать соединение" VerticalAlignment="Center"
+                <CheckBox Content="Перенос строк" VerticalAlignment="Center"
+                          Style="{StaticResource Check.Main}"
+                          IsChecked="{Binding WrapOutput}"/>
+                <CheckBox Content="Держать соединение" VerticalAlignment="Center" Margin="16,0,0,0"
                           Style="{StaticResource Check.Main}"
                           IsChecked="{Binding KeepAliveEnabled}"/>
                 <Button Content="Переподключить" Style="{StaticResource Btn.Secondary}"
@@ -100,15 +114,20 @@
 
             <!-- Выпадающий список: автодополнение команд / история ввода -->
             <Popup IsOpen="{Binding SuggestionsOpen, Mode=OneWay}" PlacementTarget="{Binding ElementName=InputBox}"
-                   Placement="Top" VerticalOffset="-4" StaysOpen="True" Focusable="False"
+                   Placement="Top" VerticalOffset="-6" StaysOpen="True" Focusable="False"
                    AllowsTransparency="True" Width="{Binding ActualWidth, ElementName=InputBox}">
-                <Border Background="{DynamicResource Brush.Bg.Card}" CornerRadius="9"
-                        BorderBrush="{DynamicResource Brush.Border.Strong}" BorderThickness="1" Padding="4">
+                <Border Background="{DynamicResource Brush.Bg.Sidebar}" CornerRadius="10"
+                        BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="1"
+                        Padding="4" Margin="8">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.65" Color="Black"/>
+                    </Border.Effect>
                     <ListBox x:Name="SuggestList" ItemsSource="{Binding Suggestions}"
                              SelectedIndex="{Binding SuggestionIndex, Mode=TwoWay}"
-                             Background="Transparent" BorderThickness="0" MaxHeight="220"
+                             Background="Transparent" BorderThickness="0" MaxHeight="240"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              ItemContainerStyle="{StaticResource SuggestItem}"
+                             SelectionChanged="SuggestList_SelectionChanged"
                              PreviewMouseLeftButtonUp="SuggestList_Click"/>
                 </Border>
             </Popup>

@@ -43,6 +43,9 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         set { if (SetProperty(ref _keepAliveEnabled, value)) UpdateKeepAlive(); }
     }
 
+    private bool _wrapOutput;
+    public bool WrapOutput { get => _wrapOutput; set => SetProperty(ref _wrapOutput, value); }
+
     // --- Выпадающий список: автодополнение команд и история ввода ---
     public ObservableCollection<string> Suggestions { get; } = new();
 
@@ -183,19 +186,21 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
     {
         if (_history.Count == 0) return;
 
+        // Уникальные; самые свежие — внизу списка (ближе к полю ввода).
         var items = new List<string>();
         for (int i = _history.Count - 1; i >= 0 && items.Count < 15; i--)
             if (!items.Contains(_history[i])) items.Add(_history[i]);
+        items.Reverse();
 
-        Show(items, SuggestionKind.History);
+        Show(items, SuggestionKind.History, selectLast: true);
     }
 
-    private void Show(IReadOnlyList<string> items, SuggestionKind kind)
+    private void Show(IReadOnlyList<string> items, SuggestionKind kind, bool selectLast = false)
     {
         SuggestionKind = kind;
         Suggestions.Clear();
         foreach (var it in items) Suggestions.Add(it);
-        SuggestionIndex = Suggestions.Count > 0 ? 0 : -1;
+        SuggestionIndex = Suggestions.Count == 0 ? -1 : (selectLast ? Suggestions.Count - 1 : 0);
         SuggestionsOpen = Suggestions.Count > 0;
     }
 

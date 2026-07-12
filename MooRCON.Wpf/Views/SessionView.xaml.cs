@@ -40,6 +40,12 @@ public partial class SessionView : UserControl
         }
     }
 
+    private void SuggestList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (SuggestList.SelectedItem != null)
+            SuggestList.ScrollIntoView(SuggestList.SelectedItem);
+    }
+
     /// <summary>
     /// Клавиши на уровне вкладки: навигация по выпадающему списку, Tab-автодополнение,
     /// история по стрелкам; любая печатная клавиша возвращает фокус в поле ввода.
@@ -72,17 +78,13 @@ public partial class SessionView : UserControl
                 return;
 
             case Key.Enter:
-                // В режиме истории Enter выбирает вариант, иначе — отправляет команду.
-                if (vm.SuggestionsOpen && vm.SuggestionKind == SuggestionKind.History)
+                // Если список открыт — подставляем ВЫБРАННУЮ команду, затем сразу отправляем.
+                if (vm.SuggestionsOpen)
                 {
                     vm.AcceptSuggestion();
                     FocusCaretEnd();
                 }
-                else
-                {
-                    vm.CloseSuggestions();
-                    if (vm.SendCommand.CanExecute(null)) vm.SendCommand.Execute(null);
-                }
+                if (vm.SendCommand.CanExecute(null)) vm.SendCommand.Execute(null);
                 e.Handled = true;
                 return;
 
