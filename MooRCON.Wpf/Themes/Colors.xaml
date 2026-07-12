@@ -1,0 +1,100 @@
+<!--
+    MooRCON — цветовая палитра для WPF
+    ============================================================
+    Основано на дизайн-системе Discord Bot Manager (тёмная графитовая тема),
+    акцент перекрашен под бренд MooRCON (красный вместо blurple).
+
+    Для каждого токена: Color.* (тип Color) и Brush.* (SolidColorBrush).
+    Формат цвета с прозрачностью в WPF: #AARRGGBB (альфа первой).
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ==================== ФОНЫ (от тёмного к светлому) ==================== -->
+    <Color x:Key="Color.Bg.TitleBar">#FF1A1B1E</Color>
+    <Color x:Key="Color.Bg.Input">#FF1E1F22</Color>
+    <Color x:Key="Color.Bg.Sidebar">#FF232428</Color>
+    <Color x:Key="Color.Bg.StatInner">#FF26282C</Color>
+    <Color x:Key="Color.Bg.Card">#FF2B2D31</Color>
+    <Color x:Key="Color.Bg.StatStrip">#FF2E3035</Color>
+    <Color x:Key="Color.Bg.Surface">#FF313338</Color>
+    <Color x:Key="Color.Bg.Disabled">#FF3A3D44</Color>
+    <Color x:Key="Color.Bg.Avatar">#FF404249</Color>
+
+    <SolidColorBrush x:Key="Brush.Bg.TitleBar"  Color="{StaticResource Color.Bg.TitleBar}"/>
+    <SolidColorBrush x:Key="Brush.Bg.Input"     Color="{StaticResource Color.Bg.Input}"/>
+    <SolidColorBrush x:Key="Brush.Bg.Sidebar"   Color="{StaticResource Color.Bg.Sidebar}"/>
+    <SolidColorBrush x:Key="Brush.Bg.StatInner" Color="{StaticResource Color.Bg.StatInner}"/>
+    <SolidColorBrush x:Key="Brush.Bg.Card"      Color="{StaticResource Color.Bg.Card}"/>
+    <SolidColorBrush x:Key="Brush.Bg.StatStrip" Color="{StaticResource Color.Bg.StatStrip}"/>
+    <SolidColorBrush x:Key="Brush.Bg.Surface"   Color="{StaticResource Color.Bg.Surface}"/>
+    <SolidColorBrush x:Key="Brush.Bg.Disabled"  Color="{StaticResource Color.Bg.Disabled}"/>
+    <SolidColorBrush x:Key="Brush.Bg.Avatar"    Color="{StaticResource Color.Bg.Avatar}"/>
+
+    <SolidColorBrush x:Key="Brush.Bg.Window" Color="{StaticResource Color.Bg.Input}"/>
+
+    <!-- ==================== ТЕКСТ (от яркого к тусклому) ==================== -->
+    <Color x:Key="Color.Text.Primary">#FFF2F3F5</Color>
+    <Color x:Key="Color.Text.Strong">#FFDBDEE1</Color>
+    <Color x:Key="Color.Text.Log">#FFC4C9CF</Color>
+    <Color x:Key="Color.Text.Secondary">#FFB5BAC1</Color>
+    <Color x:Key="Color.Text.Muted">#FF9AA0A6</Color>
+    <Color x:Key="Color.Text.Label">#FF80848E</Color>
+    <Color x:Key="Color.Text.Faint">#FF6D7178</Color>
+    <Color x:Key="Color.Text.Faintest">#FF5D6066</Color>
+
+    <SolidColorBrush x:Key="Brush.Text.Primary"   Color="{StaticResource Color.Text.Primary}"/>
+    <SolidColorBrush x:Key="Brush.Text.Strong"    Color="{StaticResource Color.Text.Strong}"/>
+    <SolidColorBrush x:Key="Brush.Text.Log"       Color="{StaticResource Color.Text.Log}"/>
+    <SolidColorBrush x:Key="Brush.Text.Secondary" Color="{StaticResource Color.Text.Secondary}"/>
+    <SolidColorBrush x:Key="Brush.Text.Muted"     Color="{StaticResource Color.Text.Muted}"/>
+    <SolidColorBrush x:Key="Brush.Text.Label"     Color="{StaticResource Color.Text.Label}"/>
+    <SolidColorBrush x:Key="Brush.Text.Faint"     Color="{StaticResource Color.Text.Faint}"/>
+    <SolidColorBrush x:Key="Brush.Text.Faintest"  Color="{StaticResource Color.Text.Faintest}"/>
+
+    <!-- ==================== АКЦЕНТ (MooRCON red) ==================== -->
+    <Color x:Key="Color.Accent">#FFE23B3B</Color>
+    <Color x:Key="Color.Accent.Hover">#FFC42F2F</Color>
+    <Color x:Key="Color.Accent.Pressed">#FFA82727</Color>
+
+    <SolidColorBrush x:Key="Brush.Accent"         Color="{StaticResource Color.Accent}"/>
+    <SolidColorBrush x:Key="Brush.Accent.Hover"   Color="{StaticResource Color.Accent.Hover}"/>
+    <SolidColorBrush x:Key="Brush.Accent.Pressed" Color="{StaticResource Color.Accent.Pressed}"/>
+    <SolidColorBrush x:Key="Brush.Accent.Soft"   Color="#1FE23B3B"/>
+    <SolidColorBrush x:Key="Brush.Accent.Soft18" Color="#2EE23B3B"/>
+
+    <!-- ==================== СТАТУСЫ ==================== -->
+    <Color x:Key="Color.Success">#FF23A559</Color>
+    <Color x:Key="Color.Success.Text">#FF3BA55D</Color>
+    <Color x:Key="Color.Start">#FF248046</Color>
+    <Color x:Key="Color.Warning">#FFF0B232</Color>
+    <Color x:Key="Color.Danger">#FFF23F43</Color>
+    <Color x:Key="Color.Danger.Alt">#FFDA373C</Color>
+    <Color x:Key="Color.Info.Ram">#FF00A8FC</Color>
+    <Color x:Key="Color.Offline">#FF80848E</Color>
+
+    <SolidColorBrush x:Key="Brush.Success"      Color="{StaticResource Color.Success}"/>
+    <SolidColorBrush x:Key="Brush.Success.Text" Color="{StaticResource Color.Success.Text}"/>
+    <SolidColorBrush x:Key="Brush.Start"        Color="{StaticResource Color.Start}"/>
+    <SolidColorBrush x:Key="Brush.Warning"      Color="{StaticResource Color.Warning}"/>
+    <SolidColorBrush x:Key="Brush.Danger"       Color="{StaticResource Color.Danger}"/>
+    <SolidColorBrush x:Key="Brush.Danger.Alt"   Color="{StaticResource Color.Danger.Alt}"/>
+    <SolidColorBrush x:Key="Brush.Info.Ram"     Color="{StaticResource Color.Info.Ram}"/>
+    <SolidColorBrush x:Key="Brush.Offline"      Color="{StaticResource Color.Offline}"/>
+
+    <SolidColorBrush x:Key="Brush.Success.Bg" Color="#2423A559"/>
+    <SolidColorBrush x:Key="Brush.Warning.Bg" Color="#29F0B232"/>
+    <SolidColorBrush x:Key="Brush.Danger.Bg"  Color="#10F23F43"/>
+    <SolidColorBrush x:Key="Brush.Offline.Bg" Color="#2480848E"/>
+
+    <!-- ==================== ГРАНИЦЫ И РАЗДЕЛИТЕЛИ ==================== -->
+    <SolidColorBrush x:Key="Brush.Border.Subtle"  Color="#0AFFFFFF"/>
+    <SolidColorBrush x:Key="Brush.Border.Default" Color="#0FFFFFFF"/>
+    <SolidColorBrush x:Key="Brush.Border.Strong"  Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="Brush.Border.Input"   Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="Brush.Divider.Soft"   Color="#4C000000"/>
+    <SolidColorBrush x:Key="Brush.Divider"        Color="#59000000"/>
+    <SolidColorBrush x:Key="Brush.Divider.Strong" Color="#66000000"/>
+    <SolidColorBrush x:Key="Brush.Overlay.Scrim"  Color="#99000000"/>
+
+</ResourceDictionary>

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>MooRCON</AssemblyName>
+    <RootNamespace>MooRCON.Wpf</RootNamespace>
+    <ApplicationIcon>..\MyLogo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MooRCON.Core\MooRCON.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,182 @@
+<Window x:Class="MooRCON.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:MooRCON.Wpf.ViewModels"
+        xmlns:views="clr-namespace:MooRCON.Wpf.Views"
+        xmlns:conv="clr-namespace:MooRCON.Wpf.Converters"
+        Style="{StaticResource Window.Main}"
+        Title="MooRCON" Height="720" Width="1180"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+
+    <Window.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Элемент списка серверов в сайдбаре -->
+        <Style x:Key="ServerItemButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Margin" Value="8,2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="8" Padding="11,9">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Bg.Card}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Кнопка закрытия вкладки -->
+        <Style x:Key="TabCloseButton" TargetType="Button">
+            <Setter Property="Width" Value="18"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="9"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Faint}"/>
+            <Setter Property="Content" Value="&#xE711;"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Danger.Bg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ==================== ЗАГОЛОВОК ОКНА ==================== -->
+        <Grid Grid.Row="0" Background="{DynamicResource Brush.Bg.TitleBar}">
+            <StackPanel Orientation="Horizontal" Margin="14,0" VerticalAlignment="Center">
+                <TextBlock Text="Moo" Foreground="{DynamicResource Brush.Text.Primary}"
+                           FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                <TextBlock Text="RCON" Foreground="{DynamicResource Brush.Accent}"
+                           FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                <TextBlock Text="RCON-клиент" Foreground="{DynamicResource Brush.Text.Faint}"
+                           FontSize="11" Margin="12,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Style="{StaticResource Btn.Caption}" Content="&#xE949;" Click="Minimize_Click"/>
+                <Button Style="{StaticResource Btn.Caption}" Content="&#xE739;" Click="Maximize_Click"/>
+                <Button Style="{StaticResource Btn.Caption}" Content="&#xE711;" Click="Close_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ==================== ТЕЛО ==================== -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="270"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Сайдбар со списком серверов -->
+            <Border Grid.Column="0" Background="{DynamicResource Brush.Bg.Sidebar}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="СЕРВЕРЫ" Foreground="{DynamicResource Brush.Text.Label}"
+                               FontSize="11" FontWeight="SemiBold" Margin="18,16,0,10"/>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Servers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource ServerItemButton}"
+                                            Command="{Binding DataContext.ConnectCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Brush.Text.Strong}"
+                                                       FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Foreground="{DynamicResource Brush.Text.Faint}" FontSize="11" Margin="0,2,0,0">
+                                                <Run Text="{Binding IpHost, Mode=OneWay}"/><Run Text=":"/><Run Text="{Binding RconPort, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Button Grid.Row="2" Content="Обновить список" Style="{StaticResource Btn.Secondary}"
+                            Margin="12" Command="{Binding RefreshServersCommand}"/>
+                </Grid>
+            </Border>
+
+            <!-- Область вкладок -->
+            <Border Grid.Column="1" Background="{DynamicResource Brush.Bg.Surface}">
+                <Grid>
+                    <!-- Заглушка, когда вкладок нет -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Visibility="{Binding HasSessions, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                        <TextBlock Text="Нет открытых подключений" Foreground="{DynamicResource Brush.Text.Muted}"
+                                   FontSize="15" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Выберите сервер слева, чтобы открыть вкладку" Foreground="{DynamicResource Brush.Text.Faint}"
+                                   FontSize="12" Margin="0,6,0,0" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <TabControl Style="{StaticResource Tabs.Main}"
+                                Margin="8,6,8,8"
+                                ItemsSource="{Binding Sessions}"
+                                SelectedItem="{Binding SelectedSession, Mode=TwoWay}"
+                                Visibility="{Binding HasSessions, Converter={StaticResource BoolToVis}}">
+                        <TabControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{DynamicResource Brush.Offline}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                        <Setter Property="Fill" Value="{DynamicResource Brush.Success}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Text="{Binding Header}" VerticalAlignment="Center"/>
+                                    <Button Style="{StaticResource TabCloseButton}" Command="{Binding CloseCommand}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </TabControl.ItemTemplate>
+                        <TabControl.ContentTemplate>
+                            <DataTemplate>
+                                <views:SessionView/>
+                            </DataTemplate>
+                        </TabControl.ContentTemplate>
+                    </TabControl>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
