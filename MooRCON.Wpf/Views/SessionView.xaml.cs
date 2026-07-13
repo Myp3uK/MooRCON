@@ -70,7 +70,7 @@ public partial class SessionView : UserControl
 
     private Brush BrushFor(OutputKind kind) => kind switch
     {
-        OutputKind.Command => (Brush)FindResource("Brush.Accent"),
+        OutputKind.Command => (Brush)FindResource("Brush.Success.Text"),
         OutputKind.System => (Brush)FindResource("Brush.Text.Muted"),
         _ => (Brush)FindResource("Brush.Text.Log"),
     };
