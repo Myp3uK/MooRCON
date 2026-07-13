@@ -78,6 +78,30 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnDeleteServer(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ViewModels.MainViewModel vm) return;
+        if ((sender as FrameworkElement)?.DataContext is not ServerConfig server) return;
+
+        var confirm = new ConfirmWindow(
+            "Удалить сервер",
+            $"Удалить сервер «{server.Name}»?\nИстория команд этого сервера тоже будет удалена.")
+        {
+            Owner = this
+        };
+
+        _modalDepth++;
+        try
+        {
+            if (confirm.ShowDialog() == true)
+                vm.DeleteServer(server);
+        }
+        finally
+        {
+            _modalDepth--;
+        }
+    }
+
     private void UpdateMaximizeGlyph()
         => MaximizeButton.Content = WindowState == WindowState.Maximized ? RestoreGlyph : MaximizeGlyph;
 }

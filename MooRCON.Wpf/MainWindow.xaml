@@ -116,6 +116,32 @@
             </Setter>
         </Style>
 
+        <!-- Кнопка удаления сервера (корзина) -->
+        <Style x:Key="ServerDeleteButton" TargetType="Button">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Content" Value="&#xE74D;"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Faint}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Danger.Bg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Кнопка закрытия вкладки -->
         <Style x:Key="TabCloseButton" TargetType="Button">
             <Setter Property="Width" Value="18"/>
@@ -221,9 +247,12 @@
                                                 </TextBlock>
                                             </StackPanel>
                                         </Button>
-                                        <Button Grid.Column="1" VerticalAlignment="Center" Margin="4,0,2,0"
-                                                Style="{StaticResource ServerEditButton}"
-                                                Click="OnEditServer" ToolTip="Редактировать"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Style="{StaticResource ServerEditButton}"
+                                                    Click="OnEditServer" ToolTip="Редактировать"/>
+                                            <Button Style="{StaticResource ServerDeleteButton}" Margin="0,0,2,0"
+                                                    Click="OnDeleteServer" ToolTip="Удалить"/>
+                                        </StackPanel>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

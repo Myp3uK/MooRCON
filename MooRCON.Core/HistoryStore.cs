@@ -60,4 +60,11 @@ public sealed class HistoryStore
         else all[serverName] = trimmed;
         SaveAll(all);
     }
+
+    public void Delete(string serverName)
+    {
+        if (string.IsNullOrEmpty(serverName)) return;
+        var all = LoadAll();
+        if (all.Remove(serverName)) SaveAll(all);
+    }
 }

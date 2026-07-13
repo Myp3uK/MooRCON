@@ -7,6 +7,7 @@ namespace MooRCON.Wpf.ViewModels;
 public sealed class MainViewModel : ObservableObject
 {
     private readonly ServerStore _serverStore = new();
+    private readonly HistoryStore _historyStore = new();
 
     public ObservableCollection<ServerConfig> Servers { get; } = new();
     public ObservableCollection<SessionViewModel> Sessions { get; } = new();
@@ -67,6 +68,13 @@ public sealed class MainViewModel : ObservableObject
         original.RconPass = updated.RconPass;
         _serverStore.Save(Servers);
         LoadServers(); // пересобираем список, чтобы сайдбар показал новые значения
+    }
+
+    public void DeleteServer(ServerConfig server)
+    {
+        Servers.Remove(server);
+        _serverStore.Save(Servers);
+        _historyStore.Delete(server.Name); // история этого сервера тоже удаляется
     }
 
     private async Task OpenSessionAsync(ServerConfig? server)
