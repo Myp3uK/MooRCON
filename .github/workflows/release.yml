@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Версия/тег для ручного релиза (например, v1.0.0)'
+        description: 'Версия/тег для ручного релиза (например, v2.0.0)'
         required: true
 
 permissions:
@@ -38,7 +38,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"   # v1.2.3 -> 1.2.3
 
-      - name: Publish всех вариантов (win-x64 / win-x86, fdd + self-contained)
+      - name: Publish обоих приложений (console + desktop, win-x64/x86, fdd + self-contained)
         shell: bash
         env:
           TAG: ${{ steps.ver.outputs.tag }}
@@ -46,27 +46,30 @@ jobs:
         run: |
           set -e
           mkdir -p dist
-          for RID in win-x64 win-x86; do
-            # Framework-dependent (маленький, требует установленного .NET 10 Runtime)
-            dotnet publish MooRCON.csproj -c Release -r "$RID" \
-              --no-self-contained \
-              -p:PublishSingleFile=true \
-              -p:IncludeNativeLibrariesForSelfExtract=true \
-              -p:Version="$VERSION" \
-              -o "publish/$RID/framework-dependent"
-            cp "publish/$RID/framework-dependent/MooRCON.exe" \
-               "dist/MooRCON-$TAG-$RID.exe"
 
-            # Self-contained (автономный, сжатый — .NET ставить не нужно)
-            dotnet publish MooRCON.csproj -c Release -r "$RID" \
-              --self-contained \
+          publish() {
+            local proj="$1" label="$2" rid="$3" mode="$4"
+            local out="publish/$label-$rid-$mode"
+            local args=(-c Release -r "$rid" \
               -p:PublishSingleFile=true \
               -p:IncludeNativeLibrariesForSelfExtract=true \
-              -p:EnableCompressionInSingleFile=true \
-              -p:Version="$VERSION" \
-              -o "publish/$RID/self-contained"
-            cp "publish/$RID/self-contained/MooRCON.exe" \
-               "dist/MooRCON-$TAG-$RID-self-contained.exe"
+              -p:Version="$VERSION" -o "$out")
+            if [ "$mode" = "sc" ]; then
+              args+=(--self-contained -p:EnableCompressionInSingleFile=true)
+            else
+              args+=(--no-self-contained)
+            fi
+            dotnet publish "$proj" "${args[@]}"
+            local suffix=""
+            [ "$mode" = "sc" ] && suffix="-self-contained"
+            cp "$out/MooRCON.exe" "dist/MooRCON-$TAG-$label-$rid$suffix.exe"
+          }
+
+          for rid in win-x64 win-x86; do
+            for mode in fdd sc; do
+              publish "MooRCON.csproj"                  "console" "$rid" "$mode"
+              publish "MooRCON.Wpf/MooRCON.Wpf.csproj"  "desktop" "$rid" "$mode"
+            done
           done
           ls -la dist
 
