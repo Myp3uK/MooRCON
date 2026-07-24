@@ -16,9 +16,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="RconSharp" Version="2.0.1" />
     <PackageReference Include="Spectre.Console" Version="0.50.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ради общей реализации протокола RCON: остальную логику консоль держит свою. -->
+    <ProjectReference Include="MooRCON.Core\MooRCON.Core.csproj" />
   </ItemGroup>
 
 </Project>

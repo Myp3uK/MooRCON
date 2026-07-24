@@ -1,5 +1,4 @@
-﻿using RconSharp;
-using Spectre.Console;
+﻿using Spectre.Console;
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
@@ -7,6 +6,9 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Timers;
+// Алиасы, а не using всего MooRCON.Core: у консоли свой ServerConfig в namespace MooRCON.
+using RconSession = MooRCON.Core.RconSession;
+using RconAuthException = MooRCON.Core.RconAuthException;
 #nullable enable
 namespace MooRCON
 {
@@ -26,7 +28,7 @@ namespace MooRCON
         private static readonly string ConfigFile = Path.Combine(DataDir, "servers.json");
         private static readonly string HistoryFile = Path.Combine(DataDir, "history.json");
 
-        private static RconClient? rconClient;
+        private static RconSession? rconClient;
         private static volatile bool connected = false;
         private static readonly System.Timers.Timer idleTimer = new(TimeSpan.FromMinutes(5).TotalMilliseconds);
         private static ServerConfig? currentServer;
@@ -656,61 +658,35 @@ namespace MooRCON
 
             // Закрываем предыдущее соединение, если оно осталось от прошлой сессии.
             try { rconClient?.Disconnect(); } catch { }
-            rconClient = null;
-
-            try
-            {
-                ConsoleWrite("Попытка установить соединение с сервером...");
-                rconClient = RconClient.Create(currentServer.IpHost, currentServer.RconPort);
-                await rconClient.ConnectAsync();
-            }
-            catch (Exception e)
-            {
-                ConsoleWrite(e.Message);
-                ConsoleWrite("Проверьте корректность введенных данных");
-                return false;
-            }
-            ConsoleWrite("Соединение установлено");
+            rconClient = new RconSession();
 
             for (int attempt = 1; attempt <= MAX_AUTH_ATTEMPTS; attempt++)
             {
-                ConsoleWrite($"Попытка авторизации {attempt}/{MAX_AUTH_ATTEMPTS}...");
-
-                bool auth = false;
+                ConsoleWrite($"Попытка подключения {attempt}/{MAX_AUTH_ATTEMPTS}...");
                 try
                 {
-                    auth = await rconClient!.AuthenticateAsync(currentServer.RconPass);
-                }
-                catch (Exception ex)
-                {
-                    ConsoleWrite($"Ошибка авторизации: {ex.Message}");
-                }
-
-                if (auth)
-                {
+                    await rconClient.ConnectAndAuthAsync(
+                        currentServer.IpHost, currentServer.RconPort, currentServer.RconPass);
+                    ConsoleWrite("Соединение установлено");
                     ConsoleWrite("Авторизация успешна!");
                     return true;
                 }
-
-                if (attempt < MAX_AUTH_ATTEMPTS)
+                catch (RconAuthException ex)
                 {
-                    await Task.Delay(AUTH_RETRY_DELAY_MS);
-                    // Закрываем прежний сокет перед новой попыткой, чтобы не копить соединения.
-                    try { rconClient?.Disconnect(); } catch { }
-                    rconClient = null;
-                    try
-                    {
-                        rconClient = RconClient.Create(currentServer.IpHost, currentServer.RconPort);
-                        await rconClient.ConnectAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        ConsoleWrite($"Не удалось переподключиться: {ex.Message}");
-                    }
+                    // Пароль отвергнут — повторять бессмысленно и чревато баном по IP.
+                    ConsoleWrite(ex.Message);
+                    ConsoleWrite("Не удалось пройти валидацию, проверьте пароль.");
+                    return false;
                 }
+                catch (Exception ex)
+                {
+                    ConsoleWrite($"Не удалось подключиться: {ex.Message}");
+                }
+
+                if (attempt < MAX_AUTH_ATTEMPTS) await Task.Delay(AUTH_RETRY_DELAY_MS);
             }
 
-            ConsoleWrite("Не удалось пройти валидацию, проверьте пароль.");
+            ConsoleWrite("Проверьте корректность введенных данных");
             return false;
         }
 
@@ -719,7 +695,7 @@ namespace MooRCON
             if (rconClient is null) return;
             try
             {
-                var helpOutput = await rconClient.ExecuteCommandAsync("help", isMultiPacketResponse: true);
+                var helpOutput = await rconClient.ExecuteAsync("help");
                 var parsed = ParseHelpOutput(helpOutput);
                 if (parsed.Count > 0)
                 {
@@ -730,6 +706,9 @@ namespace MooRCON
             catch (Exception ex)
             {
                 ConsoleWrite($"Не удалось загрузить список команд: {ex.Message}");
+                // Сорвавшийся help закрывает сессию (поток пакетов уже не сходится) —
+                // отражаем это, иначе REPL будет молча долбиться в мёртвый сокет.
+                if (!rconClient.IsConnected) connected = false;
             }
         }
 
@@ -820,11 +799,7 @@ namespace MooRCON
 
                     try
                     {
-                        using var cts = new CancellationTokenSource(COMMAND_TIMEOUT_MS);
-                        // isMultiPacketResponse: длинные ответы приходят несколькими пакетами —
-                        // иначе вывод обрывается, а хвост ломает следующие команды.
-                        var response = await rconClient!.ExecuteCommandAsync(command, isMultiPacketResponse: true)
-                                                        .WaitAsync(cts.Token);
+                        var response = await rconClient!.ExecuteAsync(command, COMMAND_TIMEOUT_MS);
 
                         if (!string.IsNullOrEmpty(response) && response.Contains("Couldn't find the command"))
                         {

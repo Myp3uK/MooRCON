@@ -152,7 +152,16 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
                 AppendLine($"Загружено команд для автодополнения: {cmds.Count}");
             }
         }
-        catch { /* автодополнение не критично */ }
+        catch (Exception ex)
+        {
+            // Само автодополнение некритично, но сорвавшийся help закрывает сессию:
+            // поток пакетов после недочитанного ответа уже не сходится.
+            if (!_session.IsConnected)
+            {
+                AppendLine("Не удалось загрузить список команд: " + ex.Message);
+                SyncConnectionState();
+            }
+        }
     }
 
     private async Task KeepAliveTickAsync()
