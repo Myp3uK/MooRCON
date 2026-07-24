@@ -719,7 +719,7 @@ namespace MooRCON
             if (rconClient is null) return;
             try
             {
-                var helpOutput = await rconClient.ExecuteCommandAsync("help");
+                var helpOutput = await rconClient.ExecuteCommandAsync("help", isMultiPacketResponse: true);
                 var parsed = ParseHelpOutput(helpOutput);
                 if (parsed.Count > 0)
                 {
@@ -821,7 +821,10 @@ namespace MooRCON
                     try
                     {
                         using var cts = new CancellationTokenSource(COMMAND_TIMEOUT_MS);
-                        var response = await rconClient!.ExecuteCommandAsync(command).WaitAsync(cts.Token);
+                        // isMultiPacketResponse: длинные ответы приходят несколькими пакетами —
+                        // иначе вывод обрывается, а хвост ломает следующие команды.
+                        var response = await rconClient!.ExecuteCommandAsync(command, isMultiPacketResponse: true)
+                                                        .WaitAsync(cts.Token);
 
                         if (!string.IsNullOrEmpty(response) && response.Contains("Couldn't find the command"))
                         {
@@ -840,7 +843,15 @@ namespace MooRCON
                     }
                     catch (OperationCanceledException)
                     {
-                        ConsoleWrite("Таймаут выполнения команды (10 сек)");
+                        // Ответ не дочитан до конца — поток пакетов рассинхронизирован,
+                        // дальше по этому сокету доверять нечему: поднимаем новое соединение.
+                        ConsoleWrite("Таймаут выполнения команды (10 сек). Переподключение...");
+                        idleTimer.Stop();
+                        connected = false;
+                        if (!await ConnectAndAuthAsync()) break;
+                        connected = true;
+                        await TryLoadCommandsAsync();
+                        idleTimer.Start();
                     }
                     catch (Exception ex)
                     {

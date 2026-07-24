@@ -116,7 +116,12 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         }
         catch (OperationCanceledException)
         {
+            // Ответ не дочитан до конца — поток пакетов рассинхронизирован, дальше
+            // по этому сокету доверять нечему: поднимаем соединение заново.
             AppendLine("Таймаут выполнения команды (10 сек).");
+            _historyStore.Save(Server.Name, _history);
+            await ReconnectAfterFailureAsync();
+            return;
         }
         catch (Exception ex)
         {
@@ -124,6 +129,15 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
             SyncConnectionState();
         }
         _historyStore.Save(Server.Name, _history);
+    }
+
+    /// <summary>Сбрасывает сломанное соединение и поднимает новое, не теряя вкладку.</summary>
+    private async Task ReconnectAfterFailureAsync()
+    {
+        _keepAlive.Stop();
+        _session.Disconnect();
+        IsConnected = false;
+        await ConnectAsync();
     }
 
     private async Task LoadCommandsAsync()
@@ -151,9 +165,8 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         }
         catch
         {
-            SyncConnectionState();
-            if (!IsConnected)
-                AppendLine("[keep-alive] соединение потеряно.");
+            AppendLine("[keep-alive] соединение потеряно, переподключение...");
+            await ReconnectAfterFailureAsync();
         }
     }
 

@@ -35,7 +35,10 @@ public sealed class RconSession : IAsyncDisposable
         using var cts = new CancellationTokenSource(timeoutMs);
         try
         {
-            return await _client.ExecuteCommandAsync(command).WaitAsync(cts.Token);
+            // Ответы длиннее ~4 КБ (например listplayers на заполненном сервере) сервер режет
+            // на несколько пакетов. Без этого флага читается только первый: вывод обрывается
+            // на полуслове, а хвост остаётся в сокете и ломает все последующие команды.
+            return await _client.ExecuteCommandAsync(command, isMultiPacketResponse: true).WaitAsync(cts.Token);
         }
         catch
         {
