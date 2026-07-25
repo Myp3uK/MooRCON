@@ -87,6 +87,9 @@
     <SolidColorBrush x:Key="Brush.Offline.Bg" Color="#2480848E"/>
 
     <!-- ==================== ГРАНИЦЫ И РАЗДЕЛИТЕЛИ ==================== -->
+    <!-- Внешний контур окна: чуть ярче внутренних границ, чтобы край не сливался
+         с фоном соседних (в т.ч. тёмных) окон, когда тень DWM неразличима. -->
+    <SolidColorBrush x:Key="Brush.Border.Window"  Color="#33FFFFFF"/>
     <SolidColorBrush x:Key="Brush.Border.Subtle"  Color="#0AFFFFFF"/>
     <SolidColorBrush x:Key="Brush.Border.Default" Color="#0FFFFFFF"/>
     <SolidColorBrush x:Key="Brush.Border.Strong"  Color="#14FFFFFF"/>

@@ -9,7 +9,8 @@
         Card — контейнер-карточка
 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:interop="clr-namespace:MooRCON.Wpf.Interop">
 
     <!-- Моноширинный шрифт как в Windows Terminal (с фолбэком) -->
     <FontFamily x:Key="Font.Mono">Cascadia Mono, Consolas, Courier New</FontFamily>
@@ -170,10 +171,36 @@
         <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="MinWidth" Value="960"/>
         <Setter Property="MinHeight" Value="600"/>
+        <!-- Прямые углы: гасим системное скругление Win11, тень остаётся от GlassFrameThickness. -->
+        <Setter Property="interop:WindowEffects.SquareCorners" Value="True"/>
         <Setter Property="WindowChrome.WindowChrome">
             <Setter.Value>
-                <WindowChrome CaptionHeight="40" CornerRadius="0" GlassFrameThickness="0"
+                <!-- GlassFrameThickness=1 возвращает нативную тень DWM по периметру;
+                     стеклянная рамка полностью перекрыта непрозрачным содержимым,
+                     поэтому подсветки по краю не видно. -->
+                <WindowChrome CaptionHeight="40" CornerRadius="0" GlassFrameThickness="1"
                               ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
+            </Setter.Value>
+        </Setter>
+        <!-- Свой шаблон: тонкий светлый контур, чтобы край окна был виден даже когда
+             тень сливается с тёмным фоном за окном. В развёрнутом состоянии контур убираем. -->
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Window">
+                    <Border x:Name="WindowBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{DynamicResource Brush.Border.Window}"
+                            BorderThickness="1">
+                        <AdornerDecorator>
+                            <ContentPresenter/>
+                        </AdornerDecorator>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="WindowState" Value="Maximized">
+                            <Setter TargetName="WindowBorder" Property="BorderThickness" Value="0"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
