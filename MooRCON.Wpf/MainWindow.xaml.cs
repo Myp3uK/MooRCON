@@ -1,4 +1,6 @@
 using System;
+using System.ComponentModel;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using MooRCON.Core;
@@ -33,6 +35,28 @@ public partial class MainWindow : Window
         if (_modalDepth > 0 && msg == WM_SYSCOMMAND && (int)(wParam.ToInt64() & 0xFFF0) == SC_MOVE)
             handled = true; // не даём двигать окно, пока открыт модальный диалог
         return IntPtr.Zero;
+    }
+
+    // Держим окно открытым, пока штатно отключаемся от серверов; повторный вход
+    // (уже после отключения) пропускаем — тогда окно закрывается по-настоящему.
+    private bool _closing;
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!_closing && DataContext is ViewModels.MainViewModel vm && vm.HasActiveConnections)
+        {
+            e.Cancel = true;
+            _closing = true;
+            _ = GracefulCloseAsync(vm);
+            return;
+        }
+        base.OnClosing(e);
+    }
+
+    private async Task GracefulCloseAsync(ViewModels.MainViewModel vm)
+    {
+        await vm.ShutdownAsync();
+        Close();
     }
 
     private void OnMinimize(object sender, RoutedEventArgs e)

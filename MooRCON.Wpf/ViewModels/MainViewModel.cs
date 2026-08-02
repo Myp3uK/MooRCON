@@ -21,6 +21,9 @@ public sealed class MainViewModel : ObservableObject
 
     public bool HasSessions => Sessions.Count > 0;
 
+    /// <summary>Есть ли что закрывать штатно при выходе (живые подключения).</summary>
+    public bool HasActiveConnections => Sessions.Any(s => s.IsConnected);
+
     public RelayCommand ConnectCommand { get; }
     public RelayCommand RefreshServersCommand { get; }
     public RelayCommand CloseAllCommand { get; }
@@ -43,6 +46,17 @@ public sealed class MainViewModel : ObservableObject
             await vm.DisposeAsync();
         }
         SelectedSession = null;
+    }
+
+    /// <summary>
+    /// Штатно закрывает все сессии при выходе из программы (сокеты закрываются
+    /// корректно — сервер видит нормальное отключение, а не разрыв). Если отключение
+    /// зависло, ждём ограниченное время и выходим — остаток оборвётся сам.
+    /// </summary>
+    public async Task ShutdownAsync(int timeoutMs = 3000)
+    {
+        var closing = Task.WhenAll(Sessions.ToList().Select(s => s.DisposeAsync().AsTask()));
+        await Task.WhenAny(closing, Task.Delay(timeoutMs));
     }
 
     private void LoadServers()
