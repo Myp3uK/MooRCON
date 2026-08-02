@@ -13,6 +13,11 @@ public enum SuggestionKind { Completion, History }
 /// </summary>
 public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
 {
+    // У RCON Conan бывает, что верный пароль отвергается или соединение срывается на
+    // ровном месте — поэтому подключение повторяем несколько раз, включая отказ авторизации.
+    private const int MaxConnectAttempts = 3;
+    private const int RetryDelayMs = 1000;
+
     private readonly RconSession _session = new();
     private readonly HistoryStore _historyStore = new();
     private readonly DispatcherTimer _keepAlive;
@@ -81,20 +86,33 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
     {
         Status = "Подключение...";
         AppendLine($"Подключение к {Endpoint}...");
-        try
+
+        for (int attempt = 1; attempt <= MaxConnectAttempts; attempt++)
         {
-            await _session.ConnectAndAuthAsync(Server.IpHost, Server.RconPort, Server.RconPass);
-            IsConnected = true;
-            Status = "Подключено";
-            AppendLine("Авторизация успешна.");
-            UpdateKeepAlive();
-            await LoadCommandsAsync();
-        }
-        catch (Exception ex)
-        {
-            IsConnected = false;
-            Status = "Ошибка подключения";
-            AppendLine("Ошибка: " + ex.Message);
+            try
+            {
+                await _session.ConnectAndAuthAsync(Server.IpHost, Server.RconPort, Server.RconPass);
+                IsConnected = true;
+                Status = "Подключено";
+                AppendLine("Авторизация успешна.");
+                UpdateKeepAlive();
+                await LoadCommandsAsync();
+                return;
+            }
+            catch (Exception ex)
+            {
+                IsConnected = false;
+                if (attempt < MaxConnectAttempts)
+                {
+                    AppendLine($"Попытка {attempt}/{MaxConnectAttempts} не удалась: {ex.Message}. Повтор...");
+                    await Task.Delay(RetryDelayMs);
+                }
+                else
+                {
+                    Status = "Ошибка подключения";
+                    AppendLine($"Не удалось подключиться за {MaxConnectAttempts} попыт.: {ex.Message}");
+                }
+            }
         }
     }
 
