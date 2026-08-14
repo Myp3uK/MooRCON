@@ -21,9 +21,6 @@ public sealed class MainViewModel : ObservableObject
 
     public bool HasSessions => Sessions.Count > 0;
 
-    /// <summary>Есть ли что закрывать штатно при выходе (живые подключения).</summary>
-    public bool HasActiveConnections => Sessions.Any(s => s.IsConnected);
-
     public RelayCommand ConnectCommand { get; }
     public RelayCommand RefreshServersCommand { get; }
     public RelayCommand CloseAllCommand { get; }
@@ -49,21 +46,16 @@ public sealed class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Штатно закрывает все сессии при выходе из программы (сокеты закрываются
-    /// корректно — сервер видит нормальное отключение, а не разрыв). Если отключение
-    /// зависло, ждём ограниченное время и выходим — остаток оборвётся сам.
+    /// Закрывает сокеты всех сессий при выходе из программы — синхронно и мгновенно,
+    /// чтобы сервер увидел нормальное отключение, а не разрыв. Окно при этом закрывается
+    /// без задержки. Всё обёрнуто в try/catch: сбой отключения не должен мешать выходу.
     /// </summary>
-    public async Task ShutdownAsync(int timeoutMs = 3000)
+    public void DisconnectAllOnExit()
     {
-        // Сразу убираем вкладки из коллекции: после DisposeAsync сессия непригодна
-        // (её SemaphoreSlim уничтожен), и переиспользовать её при повторном выборе
-        // сервера нельзя — иначе первая же команда упадёт на disposed-объекте.
-        var sessions = Sessions.ToList();
-        Sessions.Clear();
-        SelectedSession = null;
-
-        var closing = Task.WhenAll(sessions.Select(s => s.DisposeAsync().AsTask()));
-        await Task.WhenAny(closing, Task.Delay(timeoutMs));
+        foreach (var s in Sessions)
+        {
+            try { s.CloseConnection(); } catch { /* выходу это мешать не должно */ }
+        }
     }
 
     private void LoadServers()

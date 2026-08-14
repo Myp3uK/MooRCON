@@ -296,6 +296,19 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
             OutputEntries.Add(new OutputEntry(line, kind));
     }
 
+    /// <summary>
+    /// Синхронное закрытие при выходе из программы: сохраняем историю и штатно закрываем
+    /// сокет (сервер видит нормальное отключение). Сессию не диспозим — она остаётся
+    /// пригодной, если окно почему-то не закроется.
+    /// </summary>
+    public void CloseConnection()
+    {
+        _keepAlive.Stop();
+        _historyStore.Save(Server.Name, _history);
+        _session.Disconnect();
+        IsConnected = false;
+    }
+
     public async ValueTask DisposeAsync()
     {
         _keepAlive.Stop();

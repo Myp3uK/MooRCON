@@ -1,6 +1,5 @@
 using System;
 using System.ComponentModel;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using MooRCON.Core;
@@ -37,29 +36,12 @@ public partial class MainWindow : Window
         return IntPtr.Zero;
     }
 
-    // Держим окно открытым, пока штатно отключаемся от серверов; повторный вход
-    // (уже после отключения) пропускаем — тогда окно закрывается по-настоящему.
-    private bool _closing;
-
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (!_closing && DataContext is ViewModels.MainViewModel vm && vm.HasActiveConnections)
-        {
-            e.Cancel = true;
-            _closing = true;
-            _ = GracefulCloseAsync(vm);
-            return;
-        }
+        // Синхронно и мгновенно закрываем сокеты (сервер видит нормальное отключение,
+        // а не разрыв) и сразу даём окну закрыться — закрытие не отменяем.
+        (DataContext as ViewModels.MainViewModel)?.DisconnectAllOnExit();
         base.OnClosing(e);
-    }
-
-    private async Task GracefulCloseAsync(ViewModels.MainViewModel vm)
-    {
-        // Что бы ни случилось при отключении — окно обязано закрыться, и именно на
-        // UI-потоке (продолжение после await могло уехать в пул потоков).
-        try { await vm.ShutdownAsync(); }
-        catch { /* отключение не критично для выхода */ }
-        finally { Dispatcher.Invoke(Close); }
     }
 
     private void OnMinimize(object sender, RoutedEventArgs e)
