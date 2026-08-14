@@ -55,8 +55,11 @@ public partial class MainWindow : Window
 
     private async Task GracefulCloseAsync(ViewModels.MainViewModel vm)
     {
-        await vm.ShutdownAsync();
-        Close();
+        // Что бы ни случилось при отключении — окно обязано закрыться, и именно на
+        // UI-потоке (продолжение после await могло уехать в пул потоков).
+        try { await vm.ShutdownAsync(); }
+        catch { /* отключение не критично для выхода */ }
+        finally { Dispatcher.Invoke(Close); }
     }
 
     private void OnMinimize(object sender, RoutedEventArgs e)

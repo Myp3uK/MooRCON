@@ -55,7 +55,14 @@ public sealed class MainViewModel : ObservableObject
     /// </summary>
     public async Task ShutdownAsync(int timeoutMs = 3000)
     {
-        var closing = Task.WhenAll(Sessions.ToList().Select(s => s.DisposeAsync().AsTask()));
+        // Сразу убираем вкладки из коллекции: после DisposeAsync сессия непригодна
+        // (её SemaphoreSlim уничтожен), и переиспользовать её при повторном выборе
+        // сервера нельзя — иначе первая же команда упадёт на disposed-объекте.
+        var sessions = Sessions.ToList();
+        Sessions.Clear();
+        SelectedSession = null;
+
+        var closing = Task.WhenAll(sessions.Select(s => s.DisposeAsync().AsTask()));
         await Task.WhenAny(closing, Task.Delay(timeoutMs));
     }
 
