@@ -62,10 +62,17 @@ public partial class SessionView : UserControl
         OutputBox.ScrollToEnd();
     }
 
+    // Порядок важен: абзац сначала попадает в документ и только потом получает Run.
+    // Если собрать абзац целиком «на стороне», Run не унаследует FontSize от RichTextBox
+    // и останется с дефолтными 12 вместо 13 — текст такой вкладки выглядит мельче.
+    // Заметно это после закрытия вкладки: TabControl создаёт новый SessionView, и вывод
+    // пересобирается, пока вью ещё не в дереве (при обычном переключении вкладок вью
+    // переиспользуется и проблема не проявляется).
     private void AppendParagraph(OutputEntry entry)
     {
-        var run = new Run(entry.Text) { Foreground = BrushFor(entry.Kind) };
-        OutputBox.Document.Blocks.Add(new Paragraph(run) { Margin = new Thickness(0) });
+        var paragraph = new Paragraph { Margin = new Thickness(0) };
+        OutputBox.Document.Blocks.Add(paragraph);
+        paragraph.Inlines.Add(new Run(entry.Text) { Foreground = BrushFor(entry.Kind) });
     }
 
     private Brush BrushFor(OutputKind kind) => kind switch
