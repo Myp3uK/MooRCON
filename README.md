@@ -91,3 +91,7 @@ dotnet publish MooRCON.Wpf -c Release -r win-x64 --self-contained -p:PublishSing
   некоторые сборки Conan возвращают id предыдущего запроса, и сопоставление по id там не работает.
 - [Spectre.Console](https://spectreconsole.net/) — TUI консольной редакции.
 - WPF (.NET) — десктоп-редакция.
+
+## Лицензия
+
+[MIT](LICENSE)
