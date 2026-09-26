@@ -58,11 +58,22 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Ошибка чтения servers.json, о которой ещё не сообщили пользователю (окно покажет
+    /// её один раз и сбросит). Сам файл к этому моменту уже сохранён копией.
+    /// </summary>
+    public string? ServersLoadError { get; set; }
+
     private void LoadServers()
     {
         Servers.Clear();
         foreach (var s in _serverStore.Load())
             Servers.Add(s);
+        if (_serverStore.LoadError is not null)
+        {
+            ServersLoadError = _serverStore.LoadError;
+            OnPropertyChanged(nameof(ServersLoadError));
+        }
     }
 
     public IEnumerable<string> ServerNames => Servers.Select(s => s.Name);
@@ -75,28 +86,44 @@ public sealed class MainViewModel : ObservableObject
 
     public void UpdateServer(ServerConfig original, ServerConfig updated)
     {
+        var oldName = original.Name;
         original.Name = updated.Name;
         original.IpHost = updated.IpHost;
         original.RconPort = updated.RconPort;
         original.RconPass = updated.RconPass;
         _serverStore.Save(Servers);
+        // История привязана к имени — переносим её вслед за переименованием. Открытая
+        // вкладка держит тот же объект original, так что допишет историю уже под новым именем.
+        _historyStore.Rename(oldName, updated.Name);
         LoadServers(); // пересобираем список, чтобы сайдбар показал новые значения
     }
 
-    public void DeleteServer(ServerConfig server)
+    public async Task DeleteServerAsync(ServerConfig server)
     {
+        // Открытую вкладку удаляемого сервера закрываем без сохранения истории —
+        // иначе при закрытии она записала бы историю обратно под удалённым именем.
+        var session = FindSession(server.Name);
+        if (session is not null)
+        {
+            session.DiscardHistory();
+            Sessions.Remove(session);
+            await session.DisposeAsync();
+        }
+
         Servers.Remove(server);
         _serverStore.Save(Servers);
         _historyStore.Delete(server.Name); // история этого сервера тоже удаляется
     }
+
+    private SessionViewModel? FindSession(string serverName) => Sessions.FirstOrDefault(
+        s => string.Equals(s.Server.Name, serverName, StringComparison.Ordinal));
 
     private async Task OpenSessionAsync(ServerConfig? server)
     {
         if (server is null) return;
 
         // Вкладка на этот сервер уже открыта — переиспользуем её, не плодим дубли.
-        var existing = Sessions.FirstOrDefault(
-            s => string.Equals(s.Server.Name, server.Name, StringComparison.Ordinal));
+        var existing = FindSession(server.Name);
         if (existing is not null)
         {
             SelectedSession = existing;

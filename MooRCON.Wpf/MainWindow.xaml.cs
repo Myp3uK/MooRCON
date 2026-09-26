@@ -15,6 +15,31 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         StateChanged += (_, _) => UpdateMaximizeGlyph();
+        Loaded += (_, _) =>
+        {
+            if (DataContext is not ViewModels.MainViewModel vm) return;
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(ViewModels.MainViewModel.ServersLoadError))
+                    ShowServersLoadError(vm);
+            };
+            ShowServersLoadError(vm); // ошибка могла случиться ещё до показа окна
+        };
+    }
+
+    private void ShowServersLoadError(ViewModels.MainViewModel vm)
+    {
+        var error = vm.ServersLoadError;
+        if (error is null) return;
+        vm.ServersLoadError = null;
+
+        var dialog = new ConfirmWindow("Ошибка списка серверов", error, "OK", showCancel: false)
+        {
+            Owner = this
+        };
+        _modalDepth++;
+        try { dialog.ShowDialog(); }
+        finally { _modalDepth--; }
     }
 
     // > 0, пока открыт модальный диалог: блокируем перемещение основного окна.
@@ -87,7 +112,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnDeleteServer(object sender, RoutedEventArgs e)
+    private async void OnDeleteServer(object sender, RoutedEventArgs e)
     {
         if (DataContext is not ViewModels.MainViewModel vm) return;
         if ((sender as FrameworkElement)?.DataContext is not ServerConfig server) return;
@@ -99,16 +124,19 @@ public partial class MainWindow : Window
             Owner = this
         };
 
+        bool confirmed;
         _modalDepth++;
         try
         {
-            if (confirm.ShowDialog() == true)
-                vm.DeleteServer(server);
+            confirmed = confirm.ShowDialog() == true;
         }
         finally
         {
             _modalDepth--;
         }
+
+        if (confirmed)
+            await vm.DeleteServerAsync(server);
     }
 
     private void UpdateMaximizeGlyph()

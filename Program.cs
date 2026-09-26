@@ -9,6 +9,7 @@ using System.Timers;
 // Алиасы, а не using всего MooRCON.Core: у консоли свой ServerConfig в namespace MooRCON.
 using RconSession = MooRCON.Core.RconSession;
 using RconAuthException = MooRCON.Core.RconAuthException;
+using FileSafety = MooRCON.Core.FileSafety;
 #nullable enable
 namespace MooRCON
 {
@@ -554,6 +555,10 @@ namespace MooRCON
             {
                 AnsiConsole.MarkupLine($"[red]Ошибка чтения конфигурации: {Markup.Escape(ex.Message)}[/]");
                 AnsiConsole.MarkupLine("[yellow]Проверьте формат файла. Убедитесь, что нет лишних запятых.[/]");
+                // Пустой список при первом же сохранении перезапишет файл — откладываем копию.
+                var backup = FileSafety.BackupCorrupt(ConfigFile);
+                if (backup is not null)
+                    AnsiConsole.MarkupLine($"[yellow]Копия файла сохранена:[/] {Markup.Escape(backup)}");
                 return new List<ServerConfig>();
             }
         }
@@ -572,7 +577,7 @@ namespace MooRCON
                 }).ToList();
 
                 var json = JsonSerializer.Serialize(toSave, JsonOpts);
-                File.WriteAllText(ConfigFile, json, Encoding.UTF8);
+                FileSafety.WriteAllTextAtomic(ConfigFile, json);
             }
             catch (Exception ex)
             {
@@ -593,6 +598,7 @@ namespace MooRCON
             }
             catch
             {
+                FileSafety.BackupCorrupt(HistoryFile); // следующее сохранение перезапишет файл
                 return [];
             }
         }
@@ -602,7 +608,7 @@ namespace MooRCON
             try
             {
                 var json = JsonSerializer.Serialize(all, JsonOpts);
-                File.WriteAllText(HistoryFile, json, Encoding.UTF8);
+                FileSafety.WriteAllTextAtomic(HistoryFile, json);
             }
             catch {/* ignored */}
         }

@@ -24,7 +24,7 @@
             <TextBlock x:Name="MessageText" Margin="20,20,20,0" VerticalAlignment="Top" TextWrapping="Wrap"
                        Foreground="{DynamicResource Brush.Text.Secondary}" FontSize="13" LineHeight="20"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="20">
-                <Button Content="Отмена" Style="{StaticResource Btn.Secondary}" Width="110" Click="OnCancel"/>
+                <Button x:Name="CancelButton" Content="Отмена" Style="{StaticResource Btn.Secondary}" Width="110" Click="OnCancel"/>
                 <Button x:Name="ConfirmButton" Content="Удалить" Style="{StaticResource Btn.Danger}"
                         Width="130" Margin="10,0,0,0" Click="OnConfirm"/>
             </StackPanel>

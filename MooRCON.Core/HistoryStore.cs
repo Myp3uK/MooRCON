@@ -21,16 +21,23 @@ public sealed class HistoryStore
         ReadCommentHandling = JsonCommentHandling.Skip
     };
 
+    private readonly string _path;
+
+    public HistoryStore(string? path = null) => _path = path ?? AppPaths.HistoryFile;
+
     private Dictionary<string, List<string>> LoadAll()
     {
-        if (!File.Exists(AppPaths.HistoryFile)) return new();
+        if (!File.Exists(_path)) return new();
         try
         {
-            var json = File.ReadAllText(AppPaths.HistoryFile, Encoding.UTF8);
+            var json = File.ReadAllText(_path, Encoding.UTF8);
             return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(json, ReadOpts) ?? new();
         }
         catch
         {
+            // Следующее сохранение перезапишет файл историей одного сервера — копию
+            // остальных откладываем рядом.
+            FileSafety.BackupCorrupt(_path);
             return new();
         }
     }
@@ -39,8 +46,7 @@ public sealed class HistoryStore
     {
         try
         {
-            AppPaths.EnsureCreated();
-            File.WriteAllText(AppPaths.HistoryFile, JsonSerializer.Serialize(all, WriteOpts), Encoding.UTF8);
+            FileSafety.WriteAllTextAtomic(_path, JsonSerializer.Serialize(all, WriteOpts));
         }
         catch { /* ignored */ }
     }
@@ -58,6 +64,18 @@ public sealed class HistoryStore
         var trimmed = history.TakeLast(MaxEntries).ToList();
         if (trimmed.Count == 0) all.Remove(serverName);
         else all[serverName] = trimmed;
+        SaveAll(all);
+    }
+
+    /// <summary>Переносит историю на новое имя сервера (при переименовании).</summary>
+    public void Rename(string oldName, string newName)
+    {
+        if (string.IsNullOrEmpty(oldName) || string.IsNullOrEmpty(newName)) return;
+        if (string.Equals(oldName, newName, StringComparison.Ordinal)) return;
+
+        var all = LoadAll();
+        if (!all.Remove(oldName, out var list)) return;
+        all[newName] = list;
         SaveAll(all);
     }
 

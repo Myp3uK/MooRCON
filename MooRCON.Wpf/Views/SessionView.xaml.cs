@@ -56,6 +56,16 @@ public partial class SessionView : UserControl
     {
         if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems is not null)
             foreach (OutputEntry entry in e.NewItems) AppendParagraph(entry);
+        else if (e.Action == NotifyCollectionChangedAction.Remove && e.OldItems is not null
+                 && e.OldStartingIndex == 0)
+        {
+            // Вью-модель срезает старые строки сверху (лимит вывода), поэтому снимаем абзацы
+            // с начала документа — это дёшево, в отличие от поиска по индексу.
+            var blocks = OutputBox.Document.Blocks;
+            for (int i = 0; i < e.OldItems.Count && blocks.FirstBlock is not null; i++)
+                blocks.Remove(blocks.FirstBlock);
+            return; // срез сверху не должен дёргать прокрутку
+        }
         else if (e.Action == NotifyCollectionChangedAction.Reset)
             OutputBox.Document.Blocks.Clear();
 

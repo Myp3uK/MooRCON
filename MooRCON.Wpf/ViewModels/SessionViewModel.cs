@@ -18,12 +18,23 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
     private const int MaxConnectAttempts = 3;
     private const int RetryDelayMs = 1000;
 
+    // Сколько строк вывода держать во вкладке: без предела вкладка, открытая сутками,
+    // раздувает RichTextBox и окно начинает тормозить.
+    private const int MaxOutputLines = 5000;
+
     private readonly RconSession _session = new();
     private readonly HistoryStore _historyStore = new();
     private readonly DispatcherTimer _keepAlive;
     private readonly List<string> _history;
     private List<string> _availableCommands = new();
     private bool _suppressCompletion;
+
+    // Отменяется при закрытии вкладки: останавливает повторы подключения.
+    private readonly CancellationTokenSource _lifetime = new();
+    // Идёт подключение — повторный запуск (keep-alive, таймаут, кнопка) пропускаем.
+    private bool _connecting;
+    // Сервер удалён — историю больше не сохраняем, иначе она воскреснет в history.json.
+    private bool _historyDiscarded;
 
     public ServerConfig Server { get; }
     public string Header => Server.Name;
@@ -84,6 +95,22 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
 
     public async Task ConnectAsync()
     {
+        if (_connecting || IsClosed) return;
+        _connecting = true;
+        try
+        {
+            await ConnectWithRetriesAsync();
+        }
+        finally
+        {
+            _connecting = false;
+        }
+    }
+
+    private bool IsClosed => _lifetime.IsCancellationRequested;
+
+    private async Task ConnectWithRetriesAsync()
+    {
         Status = "Подключение...";
         AppendLine($"Подключение к {Endpoint}...");
 
@@ -92,6 +119,7 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
             try
             {
                 await _session.ConnectAndAuthAsync(Server.IpHost, Server.RconPort, Server.RconPass);
+                if (IsClosed) return; // вкладку закрыли, пока шла авторизация
                 IsConnected = true;
                 Status = "Подключено";
                 AppendLine("Авторизация успешна.");
@@ -102,10 +130,12 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
             catch (Exception ex)
             {
                 IsConnected = false;
+                if (IsClosed) return; // сессия закрыта — ошибка ожидаема, повторять некуда
                 if (attempt < MaxConnectAttempts)
                 {
                     AppendLine($"Попытка {attempt}/{MaxConnectAttempts} не удалась: {ex.Message}. Повтор...");
-                    await Task.Delay(RetryDelayMs);
+                    try { await Task.Delay(RetryDelayMs, _lifetime.Token); }
+                    catch (OperationCanceledException) { return; }
                 }
                 else
                 {
@@ -137,7 +167,7 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
             // Ответ не дочитан до конца — поток пакетов рассинхронизирован, дальше
             // по этому сокету доверять нечему: поднимаем соединение заново.
             AppendLine("Таймаут выполнения команды (10 сек).");
-            _historyStore.Save(Server.Name, _history);
+            SaveHistory();
             await ReconnectAfterFailureAsync();
             return;
         }
@@ -146,12 +176,13 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
             AppendLine("Ошибка: " + ex.Message);
             SyncConnectionState();
         }
-        _historyStore.Save(Server.Name, _history);
+        SaveHistory();
     }
 
     /// <summary>Сбрасывает сломанное соединение и поднимает новое, не теряя вкладку.</summary>
     private async Task ReconnectAfterFailureAsync()
     {
+        if (_connecting || IsClosed) return; // переподключение уже идёт или вкладка закрыта
         _keepAlive.Stop();
         _session.Disconnect();
         IsConnected = false;
@@ -294,7 +325,18 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
     {
         foreach (var line in text.Replace("\r\n", "\n").Split('\n'))
             OutputEntries.Add(new OutputEntry(line, kind));
+
+        while (OutputEntries.Count > MaxOutputLines)
+            OutputEntries.RemoveAt(0);
     }
+
+    private void SaveHistory()
+    {
+        if (!_historyDiscarded) _historyStore.Save(Server.Name, _history);
+    }
+
+    /// <summary>Сервер удаляется: историю этой вкладки больше не сохранять.</summary>
+    public void DiscardHistory() => _historyDiscarded = true;
 
     /// <summary>
     /// Синхронное закрытие при выходе из программы: сохраняем историю и штатно закрываем
@@ -304,15 +346,16 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
     public void CloseConnection()
     {
         _keepAlive.Stop();
-        _historyStore.Save(Server.Name, _history);
+        SaveHistory();
         _session.Disconnect();
         IsConnected = false;
     }
 
     public async ValueTask DisposeAsync()
     {
+        _lifetime.Cancel();
         _keepAlive.Stop();
-        _historyStore.Save(Server.Name, _history);
+        SaveHistory();
         await _session.DisposeAsync();
     }
 }
