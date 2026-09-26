@@ -1,5 +1,4 @@
 using System.Net.Sockets;
-using System.Text;
 
 namespace MooRCON.Core;
 
@@ -17,90 +16,92 @@ public sealed class RconSession : IAsyncDisposable
     /// <summary>Сколько ждать продолжение разрезанного ответа после очередного пакета.</summary>
     private const int ContinuationGraceMs = 1500;
 
+    // Подключение и команды идут под одним замком: иначе переподключение (keep-alive,
+    // таймаут, кнопка) может подменить сокет посреди чужой команды.
     private readonly SemaphoreSlim _gate = new(1, 1);
     private TcpClient? _tcp;
     private NetworkStream? _stream;
     private int _nextId;
+    private volatile bool _disposed;
 
     public bool IsConnected { get; private set; }
 
     public async Task ConnectAndAuthAsync(string host, int port, string password, int timeoutMs = 10000)
     {
-        Disconnect();
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
-        using var cts = new CancellationTokenSource(timeoutMs);
-        var tcp = new TcpClient { NoDelay = true };
+        await _gate.WaitAsync();
         try
         {
-            await tcp.ConnectAsync(host, port, cts.Token);
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            Disconnect();
+
+            using var cts = new CancellationTokenSource(timeoutMs);
+            var tcp = new TcpClient { NoDelay = true };
             _tcp = tcp;
-            _stream = tcp.GetStream();
-            _nextId = 1;
-
-            await SendAsync(RconPacketType.Auth, password, cts.Token);
-
-            // Часть серверов перед ответом на авторизацию шлёт пустой RESPONSE_VALUE.
-            RconPacket packet;
-            do
+            try
             {
-                packet = await RconProtocol.ReadAsync(_stream, cts.Token);
-            }
-            while (packet.Type == RconPacketType.ResponseValue && packet.Body.Length == 0);
+                await tcp.ConnectAsync(host, port, cts.Token);
+                var stream = tcp.GetStream();
+                _stream = stream;
+                _nextId = 1;
 
-            // По спеке отказ — это id = -1. Совпадение id с запросом не проверяем:
-            // некоторые серверы возвращают чужой id даже при успешной авторизации.
-            if (packet.Id == -1)
+                await SendAsync(stream, RconPacketType.Auth, password, cts.Token);
+
+                // Часть серверов перед ответом на авторизацию шлёт пустой RESPONSE_VALUE.
+                RconPacket packet;
+                do
+                {
+                    packet = await RconProtocol.ReadAsync(stream, cts.Token);
+                }
+                while (packet.Type == RconPacketType.ResponseValue && packet.BodyBytes.Length == 0);
+
+                // По спеке отказ — это id = -1. Совпадение id с запросом не проверяем:
+                // некоторые серверы возвращают чужой id даже при успешной авторизации.
+                if (packet.Id == -1)
+                {
+                    Disconnect();
+                    throw new RconAuthException("Ошибка авторизации: неверный пароль.");
+                }
+
+                // Сессию закрыли, пока шло подключение — сокет не должен пережить владельца.
+                ObjectDisposedException.ThrowIf(_disposed, this);
+
+                IsConnected = true;
+            }
+            catch (RconAuthException)
+            {
+                throw;
+            }
+            catch
             {
                 Disconnect();
-                throw new RconAuthException("Ошибка авторизации: неверный пароль.");
+                throw;
             }
-
-            IsConnected = true;
         }
-        catch (RconAuthException)
+        finally
         {
-            throw;
-        }
-        catch
-        {
-            Disconnect();
-            throw;
+            _gate.Release();
         }
     }
 
     public async Task<string> ExecuteAsync(string command, int timeoutMs = 10000)
     {
-        if (_stream is null || !IsConnected)
-            throw new InvalidOperationException("Нет активного соединения.");
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         // Команды по одному соединению строго последовательны: иначе keep-alive
         // и ввод пользователя разъедутся по ответам.
         await _gate.WaitAsync();
         try
         {
+            // Проверяем уже под замком: пока ждали очередь, соединение могли закрыть.
+            var stream = _stream;
+            if (stream is null || !IsConnected)
+                throw new InvalidOperationException("Нет активного соединения.");
+
             using var cts = new CancellationTokenSource(timeoutMs);
-            await SendAsync(RconPacketType.ExecCommand, command, cts.Token);
-
-            var packet = await RconProtocol.ReadAsync(_stream, cts.Token);
-            var body = new StringBuilder(packet.Body);
-
-            // Ответ длиннее ~4 КБ сервер режет на несколько пакетов. Признак продолжения —
-            // пакет, забитый до предела; хвост приходит следом почти мгновенно.
-            while (packet.Size >= RconProtocol.SplitThreshold)
-            {
-                using var grace = new CancellationTokenSource(ContinuationGraceMs);
-                try
-                {
-                    packet = await RconProtocol.ReadAsync(_stream, grace.Token);
-                    body.Append(packet.Body);
-                }
-                catch (OperationCanceledException)
-                {
-                    break; // продолжения нет — ответ был ровно на границе
-                }
-            }
-
-            return body.ToString();
+            await SendAsync(stream, RconPacketType.ExecCommand, command, cts.Token);
+            return await RconProtocol.ReadResponseAsync(stream, ContinuationGraceMs, cts.Token);
         }
         catch
         {
@@ -114,12 +115,16 @@ public sealed class RconSession : IAsyncDisposable
         }
     }
 
-    private async Task SendAsync(int type, string body, CancellationToken token)
+    private async Task SendAsync(NetworkStream stream, int type, string body, CancellationToken token)
     {
         var packet = RconProtocol.Encode(_nextId++, type, body);
-        await _stream!.WriteAsync(packet, token);
+        await stream.WriteAsync(packet, token);
     }
 
+    /// <summary>
+    /// Закрывает сокет. Можно звать из любого потока и в любой момент: зависшее на нём
+    /// чтение сразу завершится ошибкой.
+    /// </summary>
     public void Disconnect()
     {
         IsConnected = false;
@@ -131,8 +136,10 @@ public sealed class RconSession : IAsyncDisposable
 
     public ValueTask DisposeAsync()
     {
+        // Семафор не диспозим: подключение или команда могут ещё ждать на нём и должны
+        // завершиться штатной ошибкой, а не ObjectDisposedException из недр SemaphoreSlim.
+        _disposed = true;
         Disconnect();
-        _gate.Dispose();
         return ValueTask.CompletedTask;
     }
 }

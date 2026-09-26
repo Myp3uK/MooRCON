@@ -12,8 +12,11 @@ public static class RconPacketType
     public const int Auth = 3;
 }
 
-/// <summary>Разобранный пакет: заголовок + тело.</summary>
-public readonly record struct RconPacket(int Size, int Id, int Type, string Body);
+/// <summary>Разобранный пакет: заголовок + сырое тело (без нулевых терминаторов).</summary>
+public readonly record struct RconPacket(int Size, int Id, int Type, byte[] BodyBytes)
+{
+    public string Body => Encoding.UTF8.GetString(BodyBytes);
+}
 
 /// <summary>
 /// Кодирование/декодирование пакетов Source RCON.
@@ -58,7 +61,40 @@ public static class RconProtocol
         int bodyLen = size - 8;
         while (bodyLen > 0 && payload[8 + bodyLen - 1] == 0) bodyLen--;
 
-        return new RconPacket(size, id, type, Encoding.UTF8.GetString(payload, 8, bodyLen));
+        return new RconPacket(size, id, type, payload.AsSpan(8, bodyLen).ToArray());
+    }
+
+    /// <summary>
+    /// Читает ответ на команду целиком. Ответ длиннее ~4 КБ сервер режет на несколько
+    /// пакетов; признак продолжения — пакет, забитый до предела, а хвост приходит следом
+    /// почти мгновенно. Если за <paramref name="continuationGraceMs"/> продолжения нет —
+    /// ответ был ровно на границе.
+    ///
+    /// Байты тел склеиваются до декодирования: сервер режет по байтам, и двухбайтовый
+    /// символ UTF-8 (кириллица) может оказаться разрезан между пакетами.
+    /// </summary>
+    public static async Task<string> ReadResponseAsync(Stream stream, int continuationGraceMs, CancellationToken token)
+    {
+        var packet = await ReadAsync(stream, token);
+        using var body = new MemoryStream();
+        body.Write(packet.BodyBytes);
+
+        while (packet.Size >= SplitThreshold)
+        {
+            using var grace = CancellationTokenSource.CreateLinkedTokenSource(token);
+            grace.CancelAfter(continuationGraceMs);
+            try
+            {
+                packet = await ReadAsync(stream, grace.Token);
+                body.Write(packet.BodyBytes);
+            }
+            catch (OperationCanceledException) when (!token.IsCancellationRequested)
+            {
+                break; // продолжения нет — ответ был ровно на границе
+            }
+        }
+
+        return Encoding.UTF8.GetString(body.GetBuffer(), 0, (int)body.Length);
     }
 
     private static async Task<byte[]> ReadExactAsync(Stream stream, int count, CancellationToken token)
