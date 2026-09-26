@@ -32,3 +32,6 @@ jobs:
 
       - name: Build
         run: dotnet build MooRCON.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test MooRCON.Core.Tests -c Release --no-build

@@ -59,9 +59,10 @@ SmartScreen может показать предупреждение «неиз�
 Репозиторий — один solution из трёх проектов:
 
 ```
-MooRCON.Core   — общее ядро (RCON, хранилище, DPAPI)
-MooRCON.csproj — консольная редакция (TUI)
-MooRCON.Wpf    — десктоп-редакция (WPF)
+MooRCON.Core       — общее ядро (RCON, хранилище, DPAPI)
+MooRCON.Core.Tests — тесты ядра (xUnit)
+MooRCON.csproj     — консольная редакция (TUI)
+MooRCON.Wpf        — десктоп-редакция (WPF)
 ```
 
 ```bash
@@ -70,6 +71,12 @@ dotnet run --project MooRCON.csproj -c Release
 
 # десктоп
 dotnet run --project MooRCON.Wpf -c Release
+```
+
+Тесты ядра (запускаются и на Linux):
+
+```bash
+dotnet test MooRCON.Core.Tests
 ```
 
 Самодостаточный exe (пример для десктопа, x64):
@@ -84,6 +91,10 @@ dotnet publish MooRCON.Wpf -c Release -r win-x64 --self-contained -p:PublishSing
 |----------------------------------|--------------------------------------|
 | `%APPDATA%\MooRCON\servers.json` | список серверов (пароли зашифрованы) |
 | `%APPDATA%\MooRCON\history.json` | история команд по серверам           |
+
+Файлы записываются атомарно (через временный `*.tmp`), поэтому сбой посреди записи их не портит.
+Если файл всё же не читается (например, после ручной правки с ошибкой), рядом сохраняется
+его копия `*.corrupt-<дата>` — данные можно восстановить из неё.
 
 ## Стек
 

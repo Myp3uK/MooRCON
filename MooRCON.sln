@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MooRCON.Core", "MooRCON.Cor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MooRCON.Wpf", "MooRCON.Wpf\MooRCON.Wpf.csproj", "{3198AC40-7D3A-40F9-B961-1F55FFC804E7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MooRCON.Core.Tests", "MooRCON.Core.Tests\MooRCON.Core.Tests.csproj", "{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{3198AC40-7D3A-40F9-B961-1F55FFC804E7}.Release|x64.Build.0 = Release|Any CPU
 		{3198AC40-7D3A-40F9-B961-1F55FFC804E7}.Release|x86.ActiveCfg = Release|Any CPU
 		{3198AC40-7D3A-40F9-B961-1F55FFC804E7}.Release|x86.Build.0 = Release|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Debug|x64.Build.0 = Debug|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Debug|x86.Build.0 = Debug|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Release|x64.ActiveCfg = Release|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Release|x64.Build.0 = Release|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Release|x86.ActiveCfg = Release|Any CPU
+		{A1B24D17-2159-4B53-9E81-EAC01D7B2C7B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
