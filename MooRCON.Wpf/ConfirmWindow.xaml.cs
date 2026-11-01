@@ -15,9 +15,9 @@ public partial class ConfirmWindow : Window
         if (!showCancel)
         {
             CancelButton.Visibility = Visibility.Collapsed;
-            // Уведомления бывают длиннее вопроса (напр. с путём к файлу) — даём место.
+            // Уведомления бывают длиннее вопроса (напр. с путём к файлу) — даём ширину,
+            // а высоту окно подберёт само (SizeToContent).
             Width = 540;
-            Height = 290;
         }
     }
 

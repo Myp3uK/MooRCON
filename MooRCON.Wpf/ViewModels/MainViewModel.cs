@@ -8,6 +8,30 @@ public sealed class MainViewModel : ObservableObject
 {
     private readonly ServerStore _serverStore = new();
     private readonly HistoryStore _historyStore = new();
+    private readonly CommandTemplateStore _templateStore = new();
+    private readonly UiStateStore _uiStore = new();
+
+    /// <summary>Заготовки команд: один набор на программу, вкладки берут из него свой срез.</summary>
+    public CommandTemplateSet Templates { get; private set; }
+
+    /// <summary>Состояние интерфейса между запусками (геометрия окна, открыта ли панель).</summary>
+    public UiState Ui { get; }
+
+    /// <summary>
+    /// Панель с игроками и заготовками. Общая для всех вкладок: открывается и закрывается
+    /// она вместе с шириной окна, и разное состояние по вкладкам дёргало бы окно при
+    /// каждом переключении.
+    /// </summary>
+    public bool PanelOpen
+    {
+        get => Ui.PanelOpen;
+        set
+        {
+            if (Ui.PanelOpen == value) return;
+            Ui.PanelOpen = value;
+            OnPropertyChanged();
+        }
+    }
 
     public ObservableCollection<ServerConfig> Servers { get; } = new();
     public ObservableCollection<SessionViewModel> Sessions { get; } = new();
@@ -24,16 +48,23 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand ConnectCommand { get; }
     public RelayCommand RefreshServersCommand { get; }
     public RelayCommand CloseAllCommand { get; }
+    public RelayCommand TogglePanelCommand { get; }
 
     public MainViewModel()
     {
+        Templates = _templateStore.Load();
+        Ui = _uiStore.Load();
         Sessions.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasSessions));
         LoadServers();
 
         ConnectCommand = new RelayCommand(async p => await OpenSessionAsync(p as ServerConfig));
         RefreshServersCommand = new RelayCommand(_ => LoadServers());
         CloseAllCommand = new RelayCommand(async _ => await CloseAllAsync(), _ => HasSessions);
+        TogglePanelCommand = new RelayCommand(_ => PanelOpen = !PanelOpen);
     }
+
+    /// <summary>Сохраняет состояние интерфейса — вызывается при выходе.</summary>
+    public void SaveUi() => _uiStore.Save(Ui);
 
     private async Task CloseAllAsync()
     {
@@ -84,9 +115,25 @@ public sealed class MainViewModel : ObservableObject
         _serverStore.Save(Servers);
     }
 
+    /// <summary>Сохраняет правки заготовок и раздаёт новый набор открытым вкладкам.</summary>
+    public void SaveTemplates(CommandTemplateSet templates)
+    {
+        Templates = templates;
+        _templateStore.Save(templates);
+        foreach (var session in Sessions) session.ApplyTemplates(templates);
+    }
+
     public void UpdateServer(ServerConfig original, ServerConfig updated)
     {
         var oldName = original.Name;
+
+        // Заготовки тоже привязаны к серверу по имени — переносим настройку вслед.
+        if (!string.Equals(oldName, updated.Name, StringComparison.Ordinal))
+        {
+            Templates.RenameServer(oldName, updated.Name);
+            _templateStore.Save(Templates);
+        }
+
         original.Name = updated.Name;
         original.IpHost = updated.IpHost;
         original.RconPort = updated.RconPort;
@@ -113,6 +160,9 @@ public sealed class MainViewModel : ObservableObject
         Servers.Remove(server);
         _serverStore.Save(Servers);
         _historyStore.Delete(server.Name); // история этого сервера тоже удаляется
+
+        Templates.RemoveServer(server.Name); // и его список показываемых заготовок
+        _templateStore.Save(Templates);
     }
 
     private SessionViewModel? FindSession(string serverName) => Sessions.FirstOrDefault(
@@ -131,7 +181,7 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        var vm = new SessionViewModel(server);
+        var vm = new SessionViewModel(server, Templates);
         vm.CloseRequested += async s => await CloseSessionAsync(s);
         Sessions.Add(vm);
         SelectedSession = vm;

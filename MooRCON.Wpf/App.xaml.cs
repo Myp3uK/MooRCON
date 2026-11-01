@@ -11,6 +11,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
         AppPaths.EnsureCreated();
+        UiDefaults.Apply();
 
         DispatcherUnhandledException += (_, args) =>
         {

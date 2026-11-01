@@ -50,10 +50,11 @@
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="bd" Property="Opacity" Value="0.76"/>
                         </Trigger>
+                        <!-- Выключенная кнопка должна уходить в фон. Отдельная заливка для
+                             этого не годится: она светлее обычной, и выключенные кнопки
+                             выглядели заметнее включённых. Гасим прозрачностью вместе с текстом. -->
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Bg.Disabled}"/>
-                            <Setter TargetName="bd" Property="BorderBrush" Value="{x:Null}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}"/>
+                            <Setter TargetName="bd" Property="Opacity" Value="0.45"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -131,6 +132,128 @@
         </Setter>
     </Style>
 
+    <!-- Многострочное поле (цепочка команд): то же, что Field.Text, но текст идёт
+         сверху вниз, а не по центру одной строки. -->
+    <Style x:Key="Field.Area" TargetType="TextBox" BasedOn="{StaticResource Field.Text}">
+        <Setter Property="Height" Value="Auto"/>
+        <Setter Property="MinHeight" Value="92"/>
+        <Setter Property="Padding" Value="13,9"/>
+        <Setter Property="AcceptsReturn" Value="True"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="VerticalContentAlignment" Value="Top"/>
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="9">
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Выпадающий список (варианты значения параметра) -->
+    <Style x:Key="Field.ComboItem" TargetType="ComboBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="bd" Background="Transparent" CornerRadius="6" Padding="10,7">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Bg.StatInner}"/>
+                        </Trigger>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Accent.Soft18}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Field.Combo" TargetType="ComboBox">
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Strong}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="ItemContainerStyle" Value="{StaticResource Field.ComboItem}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <!-- Вся плашка — переключатель: по клику открывается список -->
+                        <ToggleButton Focusable="False" ClickMode="Press"
+                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
+                                                  RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border x:Name="bd" CornerRadius="9"
+                                                        Background="{DynamicResource Brush.Bg.Input}"
+                                                        BorderBrush="{DynamicResource Brush.Border.Default}"
+                                                        BorderThickness="1"/>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="BorderBrush"
+                                                                Value="{DynamicResource Brush.Accent}"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter TargetName="bd" Property="BorderBrush"
+                                                                Value="{DynamicResource Brush.Accent}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ToggleButton.Style>
+                        </ToggleButton>
+
+                        <ContentPresenter Margin="13,0,36,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                          Content="{TemplateBinding SelectionBoxItem}"
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                        <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                   Margin="0,0,14,0" IsHitTestVisible="False"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush.Text.Faint}"/>
+
+                        <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" StaysOpen="False"
+                               AllowsTransparency="True" Focusable="False"
+                               Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                            <Border Background="{DynamicResource Brush.Bg.Sidebar}" CornerRadius="10"
+                                    BorderBrush="{DynamicResource Brush.Border.Input}" BorderThickness="1"
+                                    Padding="4" Margin="0,4,0,0">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.6" Color="Black"/>
+                                </Border.Effect>
+                                <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                                    <ItemsPresenter/>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Поле пароля (аналог Field.Text) -->
     <Style x:Key="Field.Password" TargetType="PasswordBox">
         <Setter Property="Height" Value="40"/>
@@ -157,6 +280,42 @@
                             <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- =========================================================
+         ПОДСКАЗКА (общая для всех ToolTip)
+         Задержка и длительность задаются не здесь, а в UiDefaults:
+         это свойства владельца подсказки, а не её самой.
+         ========================================================= -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="MaxWidth" Value="360"/>
+        <Setter Property="HasDropShadow" Value="False"/>
+        <Setter Property="Placement" Value="Bottom"/>
+        <Setter Property="VerticalOffset" Value="2"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <ControlTemplate.Resources>
+                        <!-- Текст подсказки приходит строкой; чтобы длинный переносился
+                             по MaxWidth, задаём перенос всем TextBlock внутри. -->
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextWrapping" Value="Wrap"/>
+                        </Style>
+                    </ControlTemplate.Resources>
+                    <!-- Отступ оставлен под тень: иначе её срежет край окна подсказки -->
+                    <Border Background="{DynamicResource Brush.Bg.Sidebar}"
+                            BorderBrush="{DynamicResource Brush.Border.Input}" BorderThickness="1"
+                            CornerRadius="8" Padding="11,8" Margin="6">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.55" Color="Black"/>
+                        </Border.Effect>
+                        <ContentPresenter/>
+                    </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using MooRCON.Core;
 using MooRCON.Wpf.ViewModels;
 
 namespace MooRCON.Wpf.Views;
@@ -31,7 +32,11 @@ public partial class SessionView : UserControl
         if (_boundEntries is not null)
             _boundEntries.CollectionChanged -= Entries_CollectionChanged;
         if (_boundVm is not null)
+        {
             _boundVm.FocusRequested -= OnFocusRequested;
+            _boundVm.ParameterPrompt = null;
+            _boundVm.ConfirmPrompt = null;
+        }
 
         OutputBox.Document.Blocks.Clear();
         _boundEntries = null;
@@ -44,6 +49,9 @@ public partial class SessionView : UserControl
             _boundEntries.CollectionChanged += Entries_CollectionChanged;
             _boundVm = vm;
             _boundVm.FocusRequested += OnFocusRequested;
+            // Диалоги — дело вью: модель только просит спросить у пользователя.
+            _boundVm.ParameterPrompt = AskParameters;
+            _boundVm.ConfirmPrompt = AskConfirm;
             OutputBox.ScrollToEnd();
         }
 
@@ -51,6 +59,44 @@ public partial class SessionView : UserControl
     }
 
     private void OnFocusRequested() => FocusInput();
+
+    // ==================== Заготовки команд ====================
+
+    /// <summary>Спрашивает значения параметров шаблона; null — пользователь отменил.</summary>
+    private Dictionary<string, string>? AskParameters(CommandTemplate template,
+                                                      IReadOnlyList<TemplateParameter> parameters)
+    {
+        var player = (DataContext as SessionViewModel)?.SelectedPlayer;
+        var dialog = new TemplateParamsWindow(template, parameters, player);
+        return ShowModal(dialog) ? dialog.Values : null;
+    }
+
+    private bool AskConfirm(CommandTemplate template, string commands)
+    {
+        int count = commands.Split('\n').Length;
+        var question = count > 1 ? $"Отправить цепочку из {count} команд?" : "Отправить команду?";
+        return ShowModal(new ConfirmWindow("Подтверждение", $"{question}\n\n{commands}", "Отправить"));
+    }
+
+    private void OnEditTemplates(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SessionViewModel vm) return;
+        if (Window.GetWindow(this) is not MainWindow main) return;
+        if (main.DataContext is not MainViewModel mainVm) return;
+
+        var dialog = new CommandTemplatesWindow(mainVm.Templates, vm.Server.Name);
+        if (main.ShowModal(dialog) && dialog.Result is not null)
+            mainVm.SaveTemplates(dialog.Result);
+    }
+
+    /// <summary>
+    /// Модальные диалоги показываем через главное окно: пока они открыты, оно блокирует
+    /// своё перемещение.
+    /// </summary>
+    private bool ShowModal(Window dialog)
+        => Window.GetWindow(this) is MainWindow main
+            ? main.ShowModal(dialog)
+            : dialog.ShowDialog() == true;
 
     private void Entries_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {

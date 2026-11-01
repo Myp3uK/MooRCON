@@ -69,9 +69,44 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
 
     public SuggestionKind SuggestionKind { get; private set; }
 
+    // --- Игроки на сервере и заготовки команд ---
+    public ObservableCollection<PlayerInfo> Players { get; } = new();
+
+    private PlayerInfo? _selectedPlayer;
+    public PlayerInfo? SelectedPlayer
+    {
+        get => _selectedPlayer;
+        set { if (SetProperty(ref _selectedPlayer, value)) OnPropertyChanged(nameof(TemplatesHint)); }
+    }
+
+    /// <summary>
+    /// Строка под кнопками заготовок: к кому они сейчас применятся. Текст меняется, но
+    /// сама строка есть всегда — иначе при выборе игрока список над ней прыгал бы.
+    /// </summary>
+    public string TemplatesHint => SelectedPlayer is null
+        ? "Выберите игрока — команды по игроку включатся."
+        : $"Команды применятся к: {SelectedPlayer.Display}";
+
+    public ObservableCollection<CommandTemplate> Templates { get; } = new();
+
+    private string _playersStatus = "нет данных";
+    public string PlayersStatus { get => _playersStatus; private set => SetProperty(ref _playersStatus, value); }
+
+    /// <summary>Выполняется заготовка — чтобы второй клик не отправил команду дважды.</summary>
+    private bool _isBusy;
+    public bool IsBusy { get => _isBusy; private set => SetProperty(ref _isBusy, value); }
+
+    /// <summary>Вью спрашивает у пользователя значения параметров шаблона; null — отмена.</summary>
+    public Func<CommandTemplate, IReadOnlyList<TemplateParameter>, Dictionary<string, string>?>? ParameterPrompt { get; set; }
+
+    /// <summary>Вью просит подтвердить отправку уже собранной команды.</summary>
+    public Func<CommandTemplate, string, bool>? ConfirmPrompt { get; set; }
+
     public RelayCommand SendCommand { get; }
     public RelayCommand ReconnectCommand { get; }
     public RelayCommand CloseCommand { get; }
+    public RelayCommand RefreshPlayersCommand { get; }
+    public RelayCommand RunTemplateCommand { get; }
 
     public event Action<SessionViewModel>? CloseRequested;
 
@@ -79,7 +114,7 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
     public event Action? FocusRequested;
     public void RequestFocus() => FocusRequested?.Invoke();
 
-    public SessionViewModel(ServerConfig server)
+    public SessionViewModel(ServerConfig server, CommandTemplateSet templates)
     {
         Server = server;
         _history = _historyStore.Load(server.Name);
@@ -91,6 +126,12 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
                                        _ => IsConnected && !string.IsNullOrWhiteSpace(Input));
         ReconnectCommand = new RelayCommand(async _ => await ConnectAsync(), _ => !IsConnected);
         CloseCommand = new RelayCommand(_ => CloseRequested?.Invoke(this));
+        RefreshPlayersCommand = new RelayCommand(async _ => await RefreshPlayersAsync(),
+                                                 _ => IsConnected && !IsBusy);
+        RunTemplateCommand = new RelayCommand(async p => await RunTemplateAsync(p as CommandTemplate),
+                                              p => CanRunTemplate(p as CommandTemplate));
+
+        ApplyTemplates(templates);
     }
 
     public async Task ConnectAsync()
@@ -125,6 +166,7 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
                 AppendLine("Авторизация успешна.");
                 UpdateKeepAlive();
                 await LoadCommandsAsync();
+                await RefreshPlayersAsync();
                 return;
             }
             catch (Exception ex)
@@ -153,14 +195,28 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
 
         CloseSuggestions();
         Input = "";
-        if (_history.Count == 0 || _history[^1] != cmd) _history.Add(cmd);
-        AppendLine($"> {cmd}", OutputKind.Command);
+        AddToHistory(cmd);
+        await ExecuteAsync(cmd, echo: true);
+        SaveHistory();
+    }
+
+    /// <summary>
+    /// Общий путь отправки команды — и для ручного ввода, и для заготовок, и для
+    /// служебных запросов вроде listplayers. Возвращает ответ сервера или null, если
+    /// команда не ушла. При <paramref name="echo"/> = false ответ в вывод не попадает:
+    /// служебные запросы не должны засорять консоль.
+    /// </summary>
+    private async Task<string?> ExecuteAsync(string cmd, bool echo)
+    {
+        if (!IsConnected) return null;
+        if (echo) AppendLine($"> {cmd}", OutputKind.Command);
 
         try
         {
             var resp = await _session.ExecuteAsync(cmd);
-            if (!string.IsNullOrWhiteSpace(resp))
+            if (echo && !string.IsNullOrWhiteSpace(resp))
                 AppendLine(TextFormatting.NormalizeNewlines(resp).TrimEnd(), OutputKind.Response);
+            return resp;
         }
         catch (OperationCanceledException)
         {
@@ -169,14 +225,19 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
             AppendLine("Таймаут выполнения команды (10 сек).");
             SaveHistory();
             await ReconnectAfterFailureAsync();
-            return;
+            return null;
         }
         catch (Exception ex)
         {
             AppendLine("Ошибка: " + ex.Message);
             SyncConnectionState();
+            return null;
         }
-        SaveHistory();
+    }
+
+    private void AddToHistory(string cmd)
+    {
+        if (_history.Count == 0 || _history[^1] != cmd) _history.Add(cmd);
     }
 
     /// <summary>Сбрасывает сломанное соединение и поднимает новое, не теряя вкладку.</summary>
@@ -225,6 +286,109 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         {
             AppendLine("[keep-alive] соединение потеряно, переподключение...");
             await ReconnectAfterFailureAsync();
+        }
+    }
+
+    // ==================== Игроки и заготовки команд ====================
+
+    /// <summary>Перезаполняет кнопки заготовок набором, разрешённым для этого сервера.</summary>
+    public void ApplyTemplates(CommandTemplateSet templates)
+    {
+        Templates.Clear();
+        foreach (var template in templates.ForServer(Server.Name)) Templates.Add(template);
+    }
+
+    /// <summary>
+    /// Перечитывает список игроков. listplayers в вывод не пишем: список обновляется
+    /// часто (в том числе перед каждой командой по игроку), а консоль нужна для команд
+    /// пользователя.
+    /// </summary>
+    public async Task<List<PlayerInfo>> RefreshPlayersAsync()
+    {
+        var response = await ExecuteAsync("listplayers", echo: false);
+        if (response is null)
+        {
+            PlayersStatus = IsConnected ? "не удалось обновить" : "нет связи";
+            return new();
+        }
+
+        var players = PlayerListParser.Parse(response);
+        var chosen = SelectedPlayer;
+
+        Players.Clear();
+        foreach (var player in players) Players.Add(player);
+
+        // Выбор держим за самим игроком, а не за позицией в списке: позиции сдвигаются.
+        SelectedPlayer = chosen is null ? null : Players.FirstOrDefault(p => p.SameAs(chosen));
+        PlayersStatus = players.Count > 0 ? $"{players.Count} онлайн" : "никого";
+
+        return players;
+    }
+
+    private bool CanRunTemplate(CommandTemplate? template)
+        => template is not null && IsConnected && !IsBusy
+           && (!template.NeedsPlayer || SelectedPlayer is not null);
+
+    /// <summary>
+    /// Выполняет заготовку: спрашивает параметры, перечитывает listplayers и берёт оттуда
+    /// свежий индекс выбранного игрока. Индекс летучий — брать его из показанного списка
+    /// нельзя, за это время игроки могли зайти или выйти, и команда ушла бы не тому.
+    /// </summary>
+    private async Task RunTemplateAsync(CommandTemplate? template)
+    {
+        if (template is null || !CanRunTemplate(template)) return;
+
+        var parameters = CommandTemplateRenderer.FindParameters(template.Template);
+        Dictionary<string, string>? args = null;
+        if (parameters.Count > 0)
+        {
+            args = ParameterPrompt?.Invoke(template, parameters);
+            if (args is null) return; // пользователь отменил ввод
+        }
+
+        IsBusy = true;
+        try
+        {
+            PlayerInfo? player = null;
+            if (template.NeedsPlayer)
+            {
+                var chosen = SelectedPlayer;
+                if (chosen is null) return;
+
+                var fresh = await RefreshPlayersAsync();
+                player = fresh.FirstOrDefault(p => p.SameAs(chosen));
+                if (player is null)
+                {
+                    AppendLine($"Игрок «{chosen.Display}» больше не в сети — команда не отправлена.");
+                    return;
+                }
+            }
+
+            var commands = CommandTemplateRenderer.RenderLines(template.Template, player, args);
+            if (commands.Count == 0) return;
+
+            // Подтверждение показываем на уже собранных командах — видно, что именно уйдёт.
+            if (template.Confirm && ConfirmPrompt?.Invoke(template, string.Join("\n", commands)) == false)
+                return;
+
+            // Команды цепочки уходят по очереди: следующая — только после ответа на
+            // предыдущую. Сорвалась одна — дальше не идём, продолжение уже бессмысленно.
+            for (int i = 0; i < commands.Count; i++)
+            {
+                AddToHistory(commands[i]);
+                if (await ExecuteAsync(commands[i], echo: true) is null)
+                {
+                    if (commands.Count > 1)
+                        AppendLine($"Цепочка прервана: выполнено {i} из {commands.Count}.");
+                    break;
+                }
+            }
+
+            SaveHistory();
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
@@ -311,6 +475,7 @@ public sealed class SessionViewModel : ObservableObject, IAsyncDisposable
         if (!IsConnected)
         {
             Status = "Соединение потеряно";
+            PlayersStatus = "нет связи";
             _keepAlive.Stop();
         }
     }

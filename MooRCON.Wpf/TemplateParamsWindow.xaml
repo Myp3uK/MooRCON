@@ -1,0 +1,52 @@
+<Window x:Class="MooRCON.Wpf.TemplateParamsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource Window.Main}"
+        Title="Параметры команды" Icon="Assets/app.ico"
+        Width="460" MinWidth="460" MinHeight="220"
+        SizeToContent="Height" ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        PreviewKeyDown="OnPreviewKeyDown">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Background="{DynamicResource Brush.Bg.TitleBar}">
+            <TextBlock x:Name="TitleText" Margin="14,0,0,0" VerticalAlignment="Center"
+                       FontSize="12.5" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Brush.Text.Strong}"/>
+            <Button Content="&#xE8BB;" Style="{StaticResource Btn.Caption}" HorizontalAlignment="Right"
+                    Click="OnCancel"/>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Background="{DynamicResource Brush.Bg.Surface}" Margin="0">
+            <StackPanel Margin="20,18,20,0">
+                <!-- Что именно будет отправлено -->
+                <Border CornerRadius="8" Background="{DynamicResource Brush.Bg.Input}"
+                        BorderBrush="{DynamicResource Brush.Border.Input}" BorderThickness="1"
+                        Padding="10,8">
+                    <TextBlock x:Name="TemplateText" FontFamily="{StaticResource Font.Mono}" FontSize="12"
+                               TextWrapping="Wrap" Foreground="{DynamicResource Brush.Text.Secondary}"/>
+                </Border>
+
+                <TextBlock x:Name="PlayerText" Margin="2,8,0,0" FontSize="12"
+                           Foreground="{DynamicResource Brush.Text.Faint}" Visibility="Collapsed"/>
+
+                <!-- Поля параметров собираются в коде по шаблону -->
+                <StackPanel x:Name="FieldsPanel" Margin="0,6,0,0"/>
+
+                <TextBlock x:Name="ErrorText" Foreground="{DynamicResource Brush.Danger}" FontSize="12"
+                           Margin="2,12,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20">
+                <Button Content="Отмена" Style="{StaticResource Btn.Secondary}" Width="110" Click="OnCancel"/>
+                <Button Content="Выполнить" Style="{StaticResource Btn.Accent}" Width="130" Margin="10,0,0,0"
+                        Click="OnOk"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

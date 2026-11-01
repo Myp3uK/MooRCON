@@ -1,11 +1,14 @@
 <UserControl x:Class="MooRCON.Wpf.Views.SessionView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:MooRCON.Wpf.Converters"
              Loaded="OnLoaded" IsVisibleChanged="OnIsVisibleChanged"
              DataContextChanged="OnDataContextChanged"
              PreviewKeyDown="OnPreviewKeyDown">
 
     <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVis"/>
+
         <!-- Элемент выпадающего списка автодополнения/истории -->
         <Style x:Key="SuggestItem" TargetType="ListBoxItem">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}"/>
@@ -31,93 +34,269 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Игрок в списке онлайна -->
+        <Style x:Key="PlayerItem" TargetType="ListBoxItem">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="7" Padding="9,7" Margin="0,1">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Bg.StatInner}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Accent.Soft18}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Мелкая иконочная кнопка в шапках панели (обновить, настроить) -->
+        <Style x:Key="PanelIconButton" TargetType="Button">
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Faint}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Brush.Bg.Card}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Faintest}"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Кнопка заготовки команды -->
+        <Style x:Key="TemplateButton" TargetType="Button" BasedOn="{StaticResource Btn.Secondary}">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="14">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
 
-        <!-- Вывод консоли (цветной, с переносом строк) -->
-        <Border Grid.Row="0" CornerRadius="10" Background="{DynamicResource Brush.Bg.TitleBar}"
-                BorderBrush="{DynamicResource Brush.Border.Default}" BorderThickness="1">
-            <RichTextBox x:Name="OutputBox" IsReadOnly="True"
-                         Background="Transparent" BorderThickness="0"
-                         Foreground="{DynamicResource Brush.Text.Log}"
-                         FontFamily="{StaticResource Font.Mono}" FontSize="13" Padding="10"
-                         VerticalScrollBarVisibility="Auto"
-                         HorizontalScrollBarVisibility="Disabled">
-                <FlowDocument PagePadding="0"/>
-            </RichTextBox>
-        </Border>
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-        <!-- Статус-бар -->
-        <Grid Grid.Row="1" Margin="2,10">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Ellipse Width="9" Height="9" VerticalAlignment="Center" Margin="0,0,8,0">
-                    <Ellipse.Style>
-                        <Style TargetType="Ellipse">
-                            <Setter Property="Fill" Value="{DynamicResource Brush.Offline}"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                                    <Setter Property="Fill" Value="{DynamicResource Brush.Success}"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Ellipse.Style>
-                </Ellipse>
-                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource Brush.Text.Secondary}"
-                           VerticalAlignment="Center"/>
-                <TextBlock Text="  •  " Foreground="{DynamicResource Brush.Text.Faint}" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding Endpoint}" Foreground="{DynamicResource Brush.Text.Muted}"
-                           VerticalAlignment="Center"/>
-            </StackPanel>
+            <!-- Вывод консоли (цветной, с переносом строк) -->
+            <Border Grid.Row="0" CornerRadius="10" Background="{DynamicResource Brush.Bg.TitleBar}"
+                    BorderBrush="{DynamicResource Brush.Border.Default}" BorderThickness="1">
+                <RichTextBox x:Name="OutputBox" IsReadOnly="True"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="{DynamicResource Brush.Text.Log}"
+                             FontFamily="{StaticResource Font.Mono}" FontSize="13" Padding="10"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Disabled">
+                    <FlowDocument PagePadding="0"/>
+                </RichTextBox>
+            </Border>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <CheckBox Content="Держать соединение" VerticalAlignment="Center"
-                          Style="{StaticResource Check.Main}"
-                          IsChecked="{Binding KeepAliveEnabled}"/>
-                <Button Content="Переподключить" Style="{StaticResource Btn.Secondary}"
-                        Margin="14,0,0,0" Height="30" Padding="12,0"
-                        Command="{Binding ReconnectCommand}"/>
-            </StackPanel>
+            <!-- Статус-бар -->
+            <Grid Grid.Row="1" Margin="2,10">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse Width="9" Height="9" VerticalAlignment="Center" Margin="0,0,8,0">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="{DynamicResource Brush.Offline}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Success}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Text="{Binding Status}" Foreground="{DynamicResource Brush.Text.Secondary}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="  •  " Foreground="{DynamicResource Brush.Text.Faint}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Endpoint}" Foreground="{DynamicResource Brush.Text.Muted}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <!-- Панель общая на всё окно, поэтому и команда живёт на окне -->
+                    <Button Content="Игроки и команды" Style="{StaticResource Btn.Secondary}"
+                            Height="30" Padding="12,0" Margin="0,0,14,0"
+                            Command="{Binding DataContext.TogglePanelCommand,
+                                              RelativeSource={RelativeSource AncestorType=Window}}"/>
+                    <CheckBox Content="Держать соединение" VerticalAlignment="Center"
+                              Style="{StaticResource Check.Main}"
+                              IsChecked="{Binding KeepAliveEnabled}"/>
+                    <Button Content="Переподключить" Style="{StaticResource Btn.Secondary}"
+                            Margin="14,0,0,0" Height="30" Padding="12,0"
+                            Command="{Binding ReconnectCommand}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Ввод команды -->
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="InputBox" Grid.Column="0" Style="{StaticResource Field.Text}"
+                         FontFamily="{StaticResource Font.Mono}"
+                         Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}"
+                         TextChanged="InputBox_TextChanged"/>
+                <Button Grid.Column="1" Content="Отправить" Style="{StaticResource Btn.Accent}"
+                        Height="40" Margin="10,0,0,0" Command="{Binding SendCommand}"/>
+
+                <!-- Выпадающий список: автодополнение команд / история ввода.
+                     Отступ 13px слева совпадает с внутренним отступом поля ввода. -->
+                <Popup IsOpen="{Binding SuggestionsOpen, Mode=OneWay}" PlacementTarget="{Binding ElementName=InputBox}"
+                       Placement="Top" VerticalOffset="-6" StaysOpen="True" Focusable="False"
+                       AllowsTransparency="True" Width="{Binding ActualWidth, ElementName=InputBox}">
+                    <Border Background="{DynamicResource Brush.Bg.Sidebar}" CornerRadius="10"
+                            BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="1"
+                            Padding="4" Margin="13,0,13,8">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.65" Color="Black"/>
+                        </Border.Effect>
+                        <ListBox x:Name="SuggestList" ItemsSource="{Binding Suggestions}"
+                                 SelectedIndex="{Binding SuggestionIndex, Mode=TwoWay}"
+                                 Background="Transparent" BorderThickness="0" MaxHeight="240"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ItemContainerStyle="{StaticResource SuggestItem}"
+                                 SelectionChanged="SuggestList_SelectionChanged"
+                                 PreviewMouseLeftButtonUp="SuggestList_Click"/>
+                    </Border>
+                </Popup>
+            </Grid>
         </Grid>
 
-        <!-- Ввод команды -->
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBox x:Name="InputBox" Grid.Column="0" Style="{StaticResource Field.Text}"
-                     FontFamily="{StaticResource Font.Mono}"
-                     Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}"
-                     TextChanged="InputBox_TextChanged"/>
-            <Button Grid.Column="1" Content="Отправить" Style="{StaticResource Btn.Accent}"
-                    Height="40" Margin="10,0,0,0" Command="{Binding SendCommand}"/>
+        <!-- ============ Панель: игроки онлайн и заготовки команд ============ -->
+        <Border Grid.Column="1" Width="300" Margin="12,0,0,0" CornerRadius="10"
+                Background="{DynamicResource Brush.Bg.TitleBar}"
+                BorderBrush="{DynamicResource Brush.Border.Default}" BorderThickness="1"
+                Visibility="{Binding DataContext.PanelOpen,
+                                     RelativeSource={RelativeSource AncestorType=Window},
+                                     Converter={StaticResource BoolToVis}}">
+            <Grid Margin="10,12,10,12">
+                <!-- Списки игроков и команд делят высоту поровну: заготовок бывает много,
+                     и оба списка при нехватке места прокручиваются. -->
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*" MinHeight="90"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*" MinHeight="120"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <!-- Выпадающий список: автодополнение команд / история ввода.
-                 Отступ 13px слева совпадает с внутренним отступом поля ввода. -->
-            <Popup IsOpen="{Binding SuggestionsOpen, Mode=OneWay}" PlacementTarget="{Binding ElementName=InputBox}"
-                   Placement="Top" VerticalOffset="-6" StaysOpen="True" Focusable="False"
-                   AllowsTransparency="True" Width="{Binding ActualWidth, ElementName=InputBox}">
-                <Border Background="{DynamicResource Brush.Bg.Sidebar}" CornerRadius="10"
-                        BorderBrush="{DynamicResource Brush.Accent}" BorderThickness="1"
-                        Padding="4" Margin="13,0,13,8">
-                    <Border.Effect>
-                        <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.65" Color="Black"/>
-                    </Border.Effect>
-                    <ListBox x:Name="SuggestList" ItemsSource="{Binding Suggestions}"
-                             SelectedIndex="{Binding SuggestionIndex, Mode=TwoWay}"
-                             Background="Transparent" BorderThickness="0" MaxHeight="240"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             ItemContainerStyle="{StaticResource SuggestItem}"
-                             SelectionChanged="SuggestList_SelectionChanged"
-                             PreviewMouseLeftButtonUp="SuggestList_Click"/>
+                <!-- Шапка списка игроков -->
+                <Grid Grid.Row="0" Margin="4,0,0,8">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="ИГРОКИ" Foreground="{DynamicResource Brush.Text.Label}"
+                                   FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding PlayersStatus}" Margin="8,0,0,0" FontSize="11"
+                                   Foreground="{DynamicResource Brush.Text.Faintest}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Button Style="{StaticResource PanelIconButton}" Content="&#xE72C;"
+                            HorizontalAlignment="Right" ToolTip="Обновить список (listplayers)"
+                            Command="{Binding RefreshPlayersCommand}"/>
+                </Grid>
+
+                <!-- Список игроков -->
+                <Border Grid.Row="1" CornerRadius="8" Background="{DynamicResource Brush.Bg.Input}"
+                        BorderBrush="{DynamicResource Brush.Border.Default}" BorderThickness="1"
+                        Padding="3" MinHeight="90">
+                    <Grid>
+                        <TextBlock Text="Список пуст" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontSize="12" Foreground="{DynamicResource Brush.Text.Faintest}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Players.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <ListBox ItemsSource="{Binding Players}"
+                                 SelectedItem="{Binding SelectedPlayer, Mode=TwoWay}"
+                                 Background="Transparent" BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ItemContainerStyle="{StaticResource PlayerItem}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Display}" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.Text.Strong}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Details}" FontSize="11" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource Brush.Text.Faint}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
                 </Border>
-            </Popup>
-        </Grid>
+
+                <!-- Шапка заготовок -->
+                <Grid Grid.Row="2" Margin="4,16,0,8">
+                    <TextBlock Text="КОМАНДЫ" Foreground="{DynamicResource Brush.Text.Label}"
+                               FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <Button Style="{StaticResource PanelIconButton}" Content="&#xE713;"
+                            HorizontalAlignment="Right" ToolTip="Настроить заготовки"
+                            Click="OnEditTemplates"/>
+                </Grid>
+
+                <!-- Кнопки заготовок -->
+                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Templates}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding Name}" ToolTip="{Binding Comment}"
+                                        Style="{StaticResource TemplateButton}"
+                                        Command="{Binding DataContext.RunTemplateCommand,
+                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- К кому уйдут команды. Строка одна и та же по высоте в любом случае,
+                     поэтому список игроков над ней не прыгает при выборе. -->
+                <TextBlock Grid.Row="4" Margin="4,8,0,0" FontSize="11"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource Brush.Text.Faintest}"
+                           Text="{Binding TemplatesHint}"
+                           ToolTip="{Binding TemplatesHint}"/>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>
