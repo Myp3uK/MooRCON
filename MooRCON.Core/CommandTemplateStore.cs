@@ -23,9 +23,16 @@ public sealed class CommandTemplateStore
         PropertyNameCaseInsensitive = true
     };
 
+    private readonly string _path;
+
+    public CommandTemplateStore(string? path = null) => _path = path ?? AppPaths.CommandsFile;
+
+    /// <summary>Путь копии нечитаемого файла, если он был сделан при последней загрузке.</summary>
+    public string? CorruptBackup { get; private set; }
+
     public CommandTemplateSet Load()
     {
-        if (!File.Exists(AppPaths.CommandsFile))
+        if (!File.Exists(_path))
         {
             // Пишем набор по умолчанию сразу: так файл видно и его можно править руками.
             var defaults = CommandTemplateSet.Default();
@@ -35,7 +42,7 @@ public sealed class CommandTemplateStore
 
         try
         {
-            var json = File.ReadAllText(AppPaths.CommandsFile, Encoding.UTF8);
+            var json = File.ReadAllText(_path, Encoding.UTF8);
             var set = JsonSerializer.Deserialize<CommandTemplateSet>(json, ReadOpts);
             if (set is null) return CommandTemplateSet.Default();
 
@@ -47,8 +54,9 @@ public sealed class CommandTemplateStore
         }
         catch
         {
-            // Чужой файл не перезаписываем: пусть лучше заготовки не загрузятся,
-            // чем пропадут вместе с правками пользователя.
+            // Файл не прочитан — откладываем копию: следующее сохранение затрёт оригинал,
+            // а в нём могут быть заготовки, которые ещё можно поправить руками.
+            CorruptBackup = FileSafety.BackupCorrupt(_path);
             return CommandTemplateSet.Default();
         }
     }
@@ -57,9 +65,7 @@ public sealed class CommandTemplateStore
     {
         try
         {
-            AppPaths.EnsureCreated();
-            File.WriteAllText(AppPaths.CommandsFile,
-                              JsonSerializer.Serialize(set, WriteOpts), Encoding.UTF8);
+            FileSafety.WriteAllTextAtomic(_path, JsonSerializer.Serialize(set, WriteOpts));
         }
         catch { /* не критично: заготовки останутся в памяти до следующего запуска */ }
     }

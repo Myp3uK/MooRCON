@@ -83,6 +83,73 @@ public sealed class StoreTests : IDisposable
     }
 
     [Fact]
+    public void CommandTemplateStore_CreatesDefaultsThenRoundTrips()
+    {
+        var path = PathOf("commands.json");
+        var store = new CommandTemplateStore(path);
+
+        // Файла нет — набор по умолчанию сразу кладётся на диск, его видно и можно править.
+        var created = store.Load();
+        Assert.NotEmpty(created.Templates);
+        Assert.True(File.Exists(path));
+
+        created.Templates.Add(new CommandTemplate { Name = "Своя", Template = "say {?Текст}" });
+        created.SetEnabled("PvP", ["Своя"]);
+        store.Save(created);
+
+        var loaded = new CommandTemplateStore(path).Load();
+        Assert.Equal("Своя", loaded.Templates[^1].Name);
+        Assert.Equal("Своя", Assert.Single(loaded.ForServer("PvP")).Name);
+        Assert.False(File.Exists(path + ".tmp"));
+    }
+
+    [Fact]
+    public void CommandTemplateStore_CorruptFile_IsBackedUpNotLost()
+    {
+        var path = PathOf("commands.json");
+        File.WriteAllText(path, "{ broken");
+
+        var store = new CommandTemplateStore(path);
+        var set = store.Load();
+
+        Assert.NotEmpty(set.Templates); // работаем дальше на наборе по умолчанию
+        Assert.NotNull(store.CorruptBackup);
+        Assert.Single(Directory.GetFiles(_dir, "commands.json.corrupt-*"));
+    }
+
+    [Fact]
+    public void UiStateStore_RoundTripsGeometry()
+    {
+        var path = PathOf("ui.json");
+        new UiStateStore(path).Save(new UiState
+        {
+            WindowLeft = 120,
+            WindowTop = 90,
+            WindowWidth = 1000,
+            WindowHeight = 640,
+            WindowMaximized = true,
+            PanelOpen = false,
+        });
+
+        var loaded = new UiStateStore(path).Load();
+
+        Assert.True(loaded.HasGeometry);
+        Assert.Equal(120, loaded.WindowLeft);
+        Assert.Equal(1000, loaded.WindowWidth);
+        Assert.True(loaded.WindowMaximized);
+        Assert.False(loaded.PanelOpen);
+    }
+
+    [Fact]
+    public void UiStateStore_WithoutFile_HasNoGeometryAndShowsPanel()
+    {
+        var state = new UiStateStore(PathOf("missing.json")).Load();
+
+        Assert.False(state.HasGeometry);
+        Assert.True(state.PanelOpen);
+    }
+
+    [Fact]
     public void WriteAllTextAtomic_ReplacesExistingFile()
     {
         var path = PathOf("a.json");

@@ -15,13 +15,17 @@ public sealed class UiStateStore
         PropertyNameCaseInsensitive = true
     };
 
+    private readonly string _path;
+
+    public UiStateStore(string? path = null) => _path = path ?? AppPaths.UiFile;
+
     public UiState Load()
     {
-        if (!File.Exists(AppPaths.UiFile)) return new();
+        if (!File.Exists(_path)) return new();
 
         try
         {
-            var json = File.ReadAllText(AppPaths.UiFile, Encoding.UTF8);
+            var json = File.ReadAllText(_path, Encoding.UTF8);
             return JsonSerializer.Deserialize<UiState>(json, ReadOpts) ?? new();
         }
         catch
@@ -34,8 +38,7 @@ public sealed class UiStateStore
     {
         try
         {
-            AppPaths.EnsureCreated();
-            File.WriteAllText(AppPaths.UiFile, JsonSerializer.Serialize(state, WriteOpts), Encoding.UTF8);
+            FileSafety.WriteAllTextAtomic(_path, JsonSerializer.Serialize(state, WriteOpts));
         }
         catch { /* не критично: окно просто откроется на дефолтном месте */ }
     }
